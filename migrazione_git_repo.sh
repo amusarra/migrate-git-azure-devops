@@ -109,7 +109,7 @@ glob_to_regex() {
 }
 
 api_get() {
-  # $1=ORG $2=PROJECT(optional or '-') $3=PATH (senza host) es: '_apis/git/repositories?api-version=7.1'
+  # $1=ORG $2=PROJECT(optional or '-') $3=PATH $4=PAT
   local org="$1" proj="$2" path="$3" pat_var="$4"
   local base="https://dev.azure.com/${org}"
   local url
@@ -118,14 +118,40 @@ api_get() {
   else
     url="${base}/$(urlencode "$proj")/${path}"
   fi
-  curl -sS --fail -u ":${pat_var}" "$url"
+  # Cattura body e status code senza sopprimere errori
+  local resp http_code
+  resp="$(curl -sS -u ":${pat_var}" -w $'\n%{http_code}' "$url")" || {
+    echo "Errore cURL durante la richiesta API: ${url}" >&2
+    return 1
+  }
+  http_code="${resp##*$'\n'}"
+  resp="${resp%$'\n'*}"
+  if [[ ! "$http_code" =~ ^2[0-9]{2}$ ]]; then
+    echo "Errore API Azure DevOps (HTTP ${http_code}) su: ${url}" >&2
+    # Mostra il body ricevuto (HTML/JSON) per diagnosi
+    echo "$resp" >&2
+    return 1
+  fi
+  printf '%s' "$resp"
 }
 
 api_post_json() {
   # $1=ORG $2=PROJECT $3=PATH $4=JSON_BODY $5=PAT
   local org="$1" proj="$2" path="$3" body="$4" pat="$5"
   local url="https://dev.azure.com/${org}/$(urlencode "$proj")/${path}"
-  curl -sS --fail -u ":${pat}" -H "Content-Type: application/json" -X POST -d "$body" "$url"
+  local resp http_code
+  resp="$(curl -sS -u ":${pat}" -H "Content-Type: application/json" -X POST -d "$body" -w $'\n%{http_code}' "$url")" || {
+    echo "Errore cURL durante la chiamata POST: ${url}" >&2
+    return 1
+  }
+  http_code="${resp##*$'\n'}"
+  resp="${resp%$'\n'*}"
+  if [[ ! "$http_code" =~ ^20(0|1)$ ]]; then
+    echo "Errore API Azure DevOps (HTTP ${http_code}) su: ${url}" >&2
+    echo "$resp" >&2
+    return 1
+  fi
+  printf '%s' "$resp"
 }
 
 urlencode() {
@@ -185,7 +211,11 @@ main() {
 
   # 1) Elenco repo sorgente
   SRC_API="_apis/git/repositories?api-version=7.1"
-  SRC_REPOS_JSON="$(api_get "$SRC_ORG" "$SRC_PROJECT" "$SRC_API" "$SRC_PAT" || true)"
+  SRC_REPOS_JSON=""
+  if ! SRC_REPOS_JSON="$(api_get "$SRC_ORG" "$SRC_PROJECT" "$SRC_API" "$SRC_PAT")"; then
+    echo "Errore nella chiamata API per la sorgente. Interrompo." >&2
+    exit 1
+  fi
   if [[ -z "$SRC_REPOS_JSON" || "$(echo "$SRC_REPOS_JSON" | jq -r '.count // 0')" = "0" ]]; then
     echo "Nessun repository trovato nella sorgente, o accesso negato." >&2
     exit 1
@@ -210,11 +240,14 @@ main() {
 
   # 3) Elenco repo destinazione (per verificare esistenza)
   DST_API="_apis/git/repositories?api-version=7.1"
-  DST_REPOS_JSON="$(api_get "$DST_ORG" "$DST_PROJECT" "$DST_API" "$DST_PAT" || true)"
+  DST_REPOS_JSON=""
+  if ! DST_REPOS_JSON="$(api_get "$DST_ORG" "$DST_PROJECT" "$DST_API" "$DST_PAT")"; then
+    echo "Errore nella chiamata API per la destinazione. Interrompo." >&2
+    exit 1
+  fi
   declare -A DST_REPO_EXISTS
   if [[ -n "$DST_REPOS_JSON" ]]; then
     while IFS= read -r name; do
-      # Normalizza il nome repo per evitare problemi di newline/spazi
       name="$(echo "$name" | tr -d '\r\n' | xargs)"
       DST_REPO_EXISTS["$name"]=1
     done < <(echo "$DST_REPOS_JSON" | jq -r '.value[]?.name')
@@ -279,10 +312,10 @@ main() {
       else
         echo "  Creo la repo in destinazione: $REPO"
         RESPONSE=""
-        if ! RESPONSE="$(api_post_json "$DST_ORG" "$DST_PROJECT" "_apis/git/repositories?api-version=7.1" "$(jq -cn --arg name "$REPO" '{name:$name}')" "$DST_PAT" 2>&1)"; then
-          echo "  Errore nella creazione della repo: $REPO"
-          echo "  Output API:"
-          echo "$RESPONSE"
+        if ! RESPONSE="$(api_post_json "$DST_ORG" "$DST_PROJECT" "_apis/git/repositories?api-version=7.1" "$(jq -cn --arg name "$REPO" '{name:$name}')" "$DST_PAT")"; then
+          echo "  Errore nella creazione della repo: $REPO" >&2
+          echo "  Output API:" >&2
+          echo "$RESPONSE" >&2
           STATUS="ERRORE: creazione destinazione"
           MIGRATION_SUMMARY+=("$REPO | $STATUS | -")
           echo
