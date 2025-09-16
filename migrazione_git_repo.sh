@@ -37,6 +37,7 @@ FORCE_PUSH=0
 REPO_LIST_FILE=""
 
 declare -a MIGRATION_SUMMARY
+LIST_REPOS=0
 
 check_bash_version() {
   if ((BASH_VERSINFO[0] < 4)); then
@@ -158,12 +159,30 @@ urlencode() {
   jq -rn --arg s "$1" '$s|@uri'
 }
 
+print_repo_list() {
+  local org="$1" project="$2" pat="$3"
+  local api="_apis/git/repositories?api-version=7.1"
+  local json=""
+  if ! json="$(api_get "$org" "$project" "$api" "$pat")"; then
+    echo "Errore nel recupero dei repository sorgente." >&2
+    return 1
+  fi
+  if [[ -z "$json" || "$(echo "$json" | jq -r '.count // 0')" = "0" ]]; then
+    echo "Nessun repository trovato in ${org}/${project}."
+    return 0
+  fi
+  echo "Repository disponibili in ${org}/${project}:"
+  echo
+  echo "$json" | jq -r '.value[] | "- \(.name)\n    cloneUrl: \(.remoteUrl)\n    webUrl: \(.webUrl)"'
+  echo
+}
+
 usage() {
   cat <<'EOF'
 Uso:
   migrazione_git_repo.sh --src-org ORG --src-project PROJ \
              --dst-org ORG --dst-project PROJ \
-             --filter PATTERN [--repo-list FILE] [--dry-run] [--trace] [--force-push]
+             --filter PATTERN [--repo-list FILE] [--dry-run] [--trace] [--force-push] [--list-repos]
 
 Opzioni:
   --src-org,   -so   Organizzazione sorgente (Azure DevOps)
@@ -175,6 +194,7 @@ Opzioni:
   --dry-run           Non crea/pusha sulla destinazione; stampa solo cosa farebbe
   --trace,     -t     Abilita il trace (set -x)
   --force-push,-fp    Esegue il push anche se la repo esiste già in destinazione
+  --list-repos        Mostra la lista dei repository disponibili nella sorgente e termina
   -h, --help          Mostra questo aiuto
 
 Autenticazione:
@@ -390,9 +410,26 @@ while [[ $# -gt 0 ]]; do
     --dry-run)         DRY_RUN=1; shift ;;
     --trace|-t)        TRACE=1; shift ;;
     --force-push|-fp)  FORCE_PUSH=1; shift ;;
+    --list-repos)      LIST_REPOS=1; shift ;;
     -h|--help)         usage; exit 0 ;;
     *) echo "Argomento sconosciuto: $1"; usage; exit 1 ;;
   esac
 done
+
+if [[ $LIST_REPOS -eq 1 ]]; then
+  check_bash_version
+  check_dependencies
+  if [[ -z "${SRC_ORG}" || -z "${SRC_PROJECT}" ]]; then
+    echo "Errore: --src-org e --src-project sono obbligatori con --list-repos" >&2
+    usage
+    exit 1
+  fi
+  : "${SRC_PAT:?Variabile ambiente SRC_PAT mancante}"
+  [[ $TRACE -eq 1 ]] && set -x
+  if ! print_repo_list "$SRC_ORG" "$SRC_PROJECT" "$SRC_PAT"; then
+    exit 1
+  fi
+  exit 0
+fi
 
 main "$@"
