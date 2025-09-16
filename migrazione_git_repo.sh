@@ -22,8 +22,8 @@ set -euo pipefail
 # - Se la repo esiste già in destinazione, il push NON viene eseguito a meno di usare --force-push.
 #
 # Autore: Antonio Musarra <amusarr@sogei.it>
-# Date: 2024-09-15
-# Version: 1.0.0
+# Date: 2024-09-16
+# Version: 1.0.1
 #
 
 SRC_ORG=""

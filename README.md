@@ -7,7 +7,7 @@ keywords: [azure, devops, git, migration, repository, bash, script, cli]
 lang: it
 layout: article
 slug: "guida-migrazione-repository-azure-devops"
-date: "2025-09-15"
+date: "2025-09-16"
 version: "1.0.0"
 scope: Public
 state: Released
@@ -18,12 +18,13 @@ state: Released
 | Versione | Data       | Autore          | Descrizione delle Modifiche |
 | :------- | :--------- | :-------------- | :-------------------------- |
 | 1.0.0    | 2025-09-02 | Antonio Musarra | Prima release               |
+| 1.0.1    | 2025-09-16 | Antonio Musarra | Correzioni minori           |
 
 [TOC]
 
 <div style="page-break-after: always; break-after: page;"></div>
 
-Questo script consente di migrare repository Git tra progetti/organizzazioni Azure DevOps, con supporto a filtri, lista repo, dry-run e mirror push.
+Questo script consente di migrare repository Git tra progetti/organizzazioni Azure DevOps, con supporto a filtri, lista repo, dry-run e mirror push. Inoltre include un comando per elencare rapidamente tutti i repository disponibili nella sorgente (--list-repos), utile per costruire filtri o file lista e per validare PAT/permessi prima della migrazione.
 
 Un classico caso d'uso è la migrazione di tutte le repo di un progetto sorgente in un progetto destinazione, ad esempio per consolidare progetti o spostare repo tra organizzazioni o meglio servizi ICT che sono mappati su team project.
 
@@ -77,13 +78,50 @@ Output 1 - Uso base con filtro glob
 
 ## Esempi
 
+### Elencare i repository disponibili (sorgente)
+
+Questo comando elenca i repository disponibili nel progetto sorgente e termina senza effettuare alcuna migrazione. È utile per:
+
+- costruire velocemente il filtro (--filter) a partire dai nomi reali,
+- generare un file lista (--repo-list) con i repository da migrare,
+- validare PAT e permessi (errori 401/403 vengono mostrati esplicitamente),
+- fare troubleshooting con --trace.
+
+```bash
+./migrazione_git_repo.sh --src-org myorg --src-project MyProject --list-repos
+# oppure con abbreviazioni e trace
+./migrazione_git_repo.sh -so myorg -sp MyProject --list-repos --trace
+```
+
+Console 2 - Elencare i repository disponibili (sorgente)
+
+Esempio di output sintetico:
+
+```plaintext
+Repository disponibili in myorg/MyProject:
+
+- ansc-core
+    cloneUrl: https://dev.azure.com/myorg/MyProject/_git/ansc-core
+    webUrl:   https://dev.azure.com/myorg/MyProject/_git/ansc-core
+- ansc-tool-test-coop-services
+    cloneUrl: https://dev.azure.com/myorg/MyProject/_git/ansc-tool-test-coop-services
+    webUrl:   https://dev.azure.com/myorg/MyProject/_git/ansc-tool-test-coop-services
+```
+
+Output 2 - Lista dei repository disponibili (sorgente)
+
+Nota:
+
+- Richiede la variabile d’ambiente SRC_PAT impostata (scope: Code Read).
+- È possibile usare --trace anche con --list-repos per diagnosticare problemi di autenticazione o rete.
+
 ### Migrazione con filtro glob
 
 ```bash
 ./migrazione_git_repo.sh -so srcorg -sp SrcProj -do dstorg -dp DstProj -f 'ansc-*'
 ```
 
-Console 2 - Uso base con filtro glob
+Console 3 - Uso base con filtro glob
 
 ### Migrazione con filtro regex
 
@@ -91,7 +129,7 @@ Console 2 - Uso base con filtro glob
 ./migrazione_git_repo.sh -so srcorg -sp SrcProj -do dstorg -dp DstProj -f '^ansc-(core|svc)-.*$'
 ```
 
-Console 3 - Uso base con filtro regex
+Console 4 - Uso base con filtro regex
 
 ### Dry-run (simulazione, nessuna modifica)
 
@@ -101,7 +139,7 @@ Questo comando mostra le repo che verrebbero migrate senza eseguire alcuna opera
 ./migrazione_git_repo.sh -so srcorg -sp SrcProj -do dstorg -dp DstProj -f '^ansc-.*$' --dry-run
 ```
 
-Console 4 - Dry-run (simulazione, nessuna modifica)
+Console 5 - Dry-run (simulazione, nessuna modifica)
 
 A seguire l'esempio di parte dell'output:
 
@@ -125,7 +163,7 @@ Usando directory temporanea: /Users/amusarra/dev/tools/ansc/git/migrazione/tmp_m
 ...
 ```
 
-Output 2 - Dry-run (simulazione, nessuna modifica)
+Output 3 - Dry-run (simulazione, nessuna modifica)
 
 ### Migrazione di una lista di repository
 
@@ -146,7 +184,7 @@ Esegui lo script:
 ./migrazione_git_repo.sh -so srcorg -sp SrcProj -do dstorg -dp DstProj --repo-list repo_list.txt
 ```
 
-Console 5 - Migrazione di una lista di repository
+Console 6 - Migrazione di una lista di repository
 
 ### Forzare il push su repo già esistente
 
@@ -175,7 +213,7 @@ fatal: repository 'https://dev.azure.com/amusarra/ansc-tool-test-coop-services/_
   Push NON eseguito (repo già presente). Usa --force-push per forzare.
 ```
 
-Output 3 - Output nel caso di repo già esistente
+Output 4 - Output nel caso di repo già esistente
 
 Con `--force-push`, il push viene eseguito anche se la repo esiste già in destinazione, sovrascrivendo il contenuto.
 
@@ -183,7 +221,7 @@ Con `--force-push`, il push viene eseguito anche se la repo esiste già in desti
 ./migrazione_git_repo.sh -so srcorg -sp SrcProj -do dstorg -dp DstProj -f 'ansc-*' --force-push
 ```
 
-Console 6 - Forzare il push su repo già esistente
+Console 7 - Forzare il push su repo già esistente
 
 ### Abilitare il trace (debug)
 
@@ -193,7 +231,7 @@ Per abilitare il trace (debug) e vedere i comandi eseguiti, usare l'opzione `--t
 ./migrazione_git_repo.sh ...altri parametri... --trace
 ```
 
-Console 7 - Abilitare il trace (debug)
+Console 8 - Abilitare il trace (debug)
 
 ## Note
 
