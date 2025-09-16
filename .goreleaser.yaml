@@ -1,0 +1,81 @@
+# This is an example .goreleaser.yml file with some sensible defaults.
+# Make sure to check the documentation at https://goreleaser.com
+
+# The lines below are called `modelines`. See `:help modeline`
+# Feel free to remove those if you don't want/need to use them.
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
+
+version: 2
+
+project_name: migrazione-git-azure-devops
+
+builds:
+  - id: migrazione-git-azure-devops
+    main: ./cmd/migrazione/main.go
+    binary: migrazione-git-azure-devops
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - id: archive
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    ids:
+      - migrazione-git-azure-devops
+  - formats: [tar.gz]
+    files:
+      - LICENSE
+      - README.md
+    # use zip for windows archives
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+checksum:
+  name_template: 'checksums.txt'
+
+changelog:
+  sort: asc
+  use: git
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+dockers_v2:
+  - images:
+      - "amusarra/migrazione-git-azure-devops"
+      - "ghcr.io/amusarra/migrazione-git-azure-devops"
+    tags:
+      - "v{{ .Version }}"
+      - "{{ if .IsNightly }}nightly{{ end }}"
+      - "{{ if not .IsNightly }}latest{{ end }}"
+    labels:
+      "org.opencontainers.image.description": "Foo bar"
+      "org.opencontainers.image.created": "{{.Date}}"
+      "org.opencontainers.image.name": "{{.ProjectName}}"
+      "org.opencontainers.image.revision": "{{.FullCommit}}"
+      "org.opencontainers.image.version": "{{.Version}}"
+      "org.opencontainers.image.source": "{{.GitURL}}"
+
+release:
+  github:
+    owner: amusarra
+    name: migrazione-git-azure-devops
+  draft: false
+  footer: >-
+
+    ---
+
+    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
