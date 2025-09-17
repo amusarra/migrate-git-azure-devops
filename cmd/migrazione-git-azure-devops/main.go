@@ -204,7 +204,7 @@ func usage() {
 Esempi:
   %s --src-org myorg --src-project MyProject --list-repos
   %s -so src -sp Proj -do dst -dp ProjDst --wizard
-  %s -so src -sp Proj -do dst -dp ProjDst -f '^ansc-.*$' --dry-run
+  %s -so src -sp Proj -do dst -dp ProjDst -f '^horse-.*$' --dry-run
 `, name, name, name, name)
 }
 
