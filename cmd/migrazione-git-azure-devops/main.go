@@ -300,7 +300,7 @@ func runWizard(cfg Config) error {
 	fmt.Print("Procedere con la migrazione? [s/N]: ")
 	confirm, _ := in.ReadString('\n')
 	confirm = strings.TrimSpace(strings.ToLower(confirm))
-	if !(confirm == "s" || confirm == "si" || confirm == "y" || confirm == "yes") {
+	if confirm != "s" && confirm != "si" && confirm != "y" && confirm != "yes" {
 		fmt.Println("Annullato.")
 		return nil
 	}
@@ -401,7 +401,11 @@ func migrateRepos(cfg Config, repos []Repo, dstExists map[string]bool, forcePush
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			fmt.Fprintln(os.Stderr, "Errore nella rimozione della directory temporanea:", err)
+		}
+	}()
 
 	var results []Summary
 	for i, r := range repos {
@@ -579,8 +583,12 @@ func httpReq(method, org, project, path, pat string, body []byte, trace bool) ([
 	if err != nil {
 		return nil, 0, err
 	}
-	defer resp.Body.Close()
-	data, _ := io.ReadAll(resp.Body) // usa direttamente io.ReadAll
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Fprintln(os.Stderr, "Errore nella chiusura della risposta HTTP:", err)
+		}
+	}()
+	data, _ := io.ReadAll(resp.Body)
 	return data, resp.StatusCode, nil
 }
 
