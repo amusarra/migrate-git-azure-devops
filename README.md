@@ -143,25 +143,30 @@ go build -o bin/migrazione-git-azure-devops ./cmd/migrazione-git-azure-devops
 Opzione C) Da release (binari precompilati)
 
 - Vai alla pagina Release: https://github.com/amusarra/migrazione-git-azure-devops/releases
-- Scarica il binario per la tua piattaforma:
-  - Linux AMD64: migrazione-git-azure-devops_linux_amd64
-  - Linux ARM64: migrazione-git-azure-devops_linux_arm64
-  - macOS Apple Silicon: migrazione-git-azure-devops_darwin_arm64
-  - macOS Intel: migrazione-git-azure-devops_darwin_amd64
-  - Windows: migrazione-git-azure-devops_windows_amd64.exe (o arm64)
+- Scarica il pacchetto per la tua piattaforma (tar.gz)
+  - Linux AMD64: migrazione-git-azure-devops_x.y.z_linux_amd64.tar.gz
+  - Linux ARM64: migrazione-git-azure-devops_x.y.z_linux_arm64.tar.gz
+  - macOS Apple Silicon: migrazione-git-azure-devops_x.y.z_darwin_arm64.tar.gz
+  - macOS Intel: migrazione-git-azure-devops_x.y.z_darwin_amd64.tar.gz
 
-Esempi download via curl (sostituisci vX.Y.Z con la versione desiderata):
+Installazione sistema (richiede sudo e /usr/local/bin esistente):
 
 ```bash
 # Linux AMD64
-curl -L -o /usr/local/bin/migrazione-git-azure-devops \
-  https://github.com/amusarra/migrazione-git-azure-devops/releases/download/vX.Y.Z/migrazione-git-azure-devops_linux_amd64
-chmod +x /usr/local/bin/migrazione-git-azure-devops
+TMP="$(mktemp -d)"
+curl -L -o "$TMP/migrazione-git-azure-devops_linux_amd64.tar.gz" \
+  "https://github.com/amusarra/migrazione-git-azure-devops/releases/download/x.y.z/migrazione-git-azure-devops_x.y.z_linux_amd64.tar.gz"
+tar -xzf "$TMP/migrazione-git-azure-devops_linux_amd64.tar.gz" -o -C "$TMP"
+sudo install -m 0755 "$TMP/migrazione-git-azure-devops_linux_amd64" /usr/local/bin/migrazione-git-azure-devops
+```
 
-# macOS Apple Silicon
-curl -L -o /usr/local/bin/migrazione-git-azure-devops \
-  https://github.com/amusarra/migrazione-git-azure-devops/releases/download/vX.Y.Z/migrazione-git-azure-devops_darwin_arm64
-chmod +x /usr/local/bin/migrazione-git-azure-devops
+```bash
+# macOS Apple Silicon (arm64)
+TMP="$(mktemp -d)"
+curl -L -o "$TMP/migrazione-git-azure-devops_darwin_arm64.tar.gz" \
+  "https://github.com/amusarra/migrazione-git-azure-devops/releases/download/x.y.z/migrazione-git-azure-devops_x.y.z_darwin_arm64.tar.gz"
+tar -xzf "$TMP/migrazione-git-azure-devops_darwin_arm64.tar.gz" -o -C "$TMP"
+sudo install -m 0755 "$TMP/migrazione-git-azure-devops_darwin_arm64" /usr/local/bin/migrazione-git-azure-devops
 ```
 
 Facoltativo: verifica checksum (scarica checksums.txt dalla release e verifica l’hash).
