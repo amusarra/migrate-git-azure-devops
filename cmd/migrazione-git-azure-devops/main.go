@@ -1,3 +1,6 @@
+// Command migrazione-git-azure-devops migra repository Git tra progetti/organizzazioni Azure DevOps,
+// con modalità interattiva (wizard) o non interattiva, supporto dry-run, filtraggio e push mirror.
+// Le credenziali sono lette dalle variabili SRC_PAT e DST_PAT.
 package main
 
 import (
@@ -24,17 +27,20 @@ const (
 	apiVersion = "7.1"
 )
 
+// Repo rappresenta un repository Azure DevOps con i principali URL.
 type Repo struct {
 	Name      string `json:"name"`
 	RemoteURL string `json:"remoteUrl"`
 	WebURL    string `json:"webUrl"`
 }
 
+// listReposResponse mappa la risposta JSON della lista repository.
 type listReposResponse struct {
 	Count int    `json:"count"`
 	Value []Repo `json:"value"`
 }
 
+// Config raccoglie tutti i parametri CLI e di ambiente necessari alla migrazione.
 type Config struct {
 	SrcOrg     string
 	SrcProject string
@@ -52,6 +58,7 @@ type Config struct {
 	DstPAT string
 }
 
+// Summary riassume l’esito della migrazione per un singolo repository.
 type Summary struct {
 	Repo       string
 	Action     string
@@ -62,6 +69,8 @@ type Summary struct {
 	ErrDetails string
 }
 
+// main è il punto di ingresso dell’applicazione: valida i parametri e inoltra ai flussi
+// list-only, wizard o esecuzione non interattiva.
 func main() {
 	cfg, err := parseArgs(os.Args[1:])
 	if err != nil {
@@ -108,6 +117,8 @@ func main() {
 	}
 }
 
+// parseArgs interpreta gli argomenti CLI e le variabili d’ambiente (SRC_PAT/DST_PAT).
+// Valida la presenza degli elementi minimi e restituisce una Config pronta all’uso.
 func parseArgs(args []string) (Config, error) {
 	cfg := Config{}
 	// Env PAT
@@ -176,6 +187,7 @@ func parseArgs(args []string) (Config, error) {
 	return cfg, nil
 }
 
+// val restituisce l’argomento args[i] se esiste, altrimenti una stringa vuota.
 func val(args []string, i int) string {
 	if i >= 0 && i < len(args) {
 		return args[i]
@@ -183,11 +195,12 @@ func val(args []string, i int) string {
 	return ""
 }
 
-// Restituisce il nome del programma (basename dell'eseguibile)
+// prog restituisce il basename dell’eseguibile in esecuzione.
 func prog() string {
 	return filepath.Base(os.Args[0])
 }
 
+// usage stampa a video l’help dell’applicazione.
 func usage() {
 	name := prog()
 	fmt.Printf(`Uso:
@@ -202,6 +215,7 @@ Esempi:
 `, name, name, name, name)
 }
 
+// cmdListRepos elenca i repository nella sorgente e li stampa in output.
 func cmdListRepos(cfg Config) error {
 	repos, err := getRepos(cfg.SrcOrg, cfg.SrcProject, cfg.SrcPAT, cfg.Trace)
 	if err != nil {
@@ -218,6 +232,8 @@ func cmdListRepos(cfg Config) error {
 	return nil
 }
 
+// runWizard guida l’utente in una procedura interattiva di selezione e migrazione
+// dei repository, chiedendo conferma prima dell’esecuzione.
 func runWizard(cfg Config) error {
 	in := bufio.NewReader(os.Stdin)
 
@@ -316,6 +332,8 @@ func runWizard(cfg Config) error {
 	return nil
 }
 
+// runNonInteractive esegue la migrazione senza interazione, in base ai flag forniti.
+// Gestisce filtri, liste da file e il riepilogo finale.
 func runNonInteractive(cfg Config) error {
 	// carica lista sorgente
 	srcRepos, err := getRepos(cfg.SrcOrg, cfg.SrcProject, cfg.SrcPAT, cfg.Trace)
@@ -396,6 +414,11 @@ func runNonInteractive(cfg Config) error {
 	return nil
 }
 
+// migrateRepos esegue la migrazione dei repository selezionati:
+// - clona in mirror dal sorgente in una directory temporanea,
+// - crea la repo di destinazione se mancante,
+// - esegue il push mirror (con --force se richiesto),
+// rispettando le modalità dry-run e trace.
 func migrateRepos(cfg Config, repos []Repo, dstExists map[string]bool, forcePush bool) ([]Summary, error) {
 	tmpDir, err := os.MkdirTemp("", "tmp_migrazione_git_")
 	if err != nil {
@@ -505,6 +528,8 @@ func migrateRepos(cfg Config, repos []Repo, dstExists map[string]bool, forcePush
 	return results, nil
 }
 
+// printSummary stampa una tabella di riepilogo con larghezze dinamiche per colonne,
+// mostrando repository, esito e URL web di destinazione.
 func printSummary(results []Summary) {
 	headers := []string{"Repository", "Esito", "Azure URL"}
 	// Calcola larghezze massime
@@ -541,6 +566,8 @@ func printSummary(results []Summary) {
 	fmt.Println(strings.Repeat("=", 32))
 }
 
+// runCmd esegue un comando di sistema propagando l’ambiente corrente ed eventualmente
+// aggiungendo variabili extra; inoltra stdout/stderr al processo chiamante.
 func runCmd(env []string, name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	if env != nil {
@@ -553,6 +580,9 @@ func runCmd(env []string, name string, args ...string) error {
 
 // --- API helpers ---
 
+// getRepos chiama l’API Azure DevOps per ottenere l’elenco dei repository.
+// In caso di errore HTTP stampa un messaggio su stderr. Se trace è attivo,
+// stampa anche il body della risposta per facilitare il debug.
 func getRepos(org, project, pat string, trace bool) ([]Repo, error) {
 	path := fmt.Sprintf("_apis/git/repositories?api-version=%s", apiVersion)
 	body, code, err := httpReq("GET", org, project, path, pat, nil, trace)
@@ -578,6 +608,8 @@ func getRepos(org, project, pat string, trace bool) ([]Repo, error) {
 	return resp.Value, nil
 }
 
+// createRepo crea un repository in destinazione via API Azure DevOps.
+// Evidenzia su stderr gli errori HTTP; in trace mostra il body di risposta.
 func createRepo(org, project, pat, name string, trace bool) error {
 	path := fmt.Sprintf("_apis/git/repositories?api-version=%s", apiVersion)
 	payload := map[string]string{"name": name}
@@ -594,6 +626,9 @@ func createRepo(org, project, pat, name string, trace bool) error {
 	return nil
 }
 
+// httpReq effettua una richiesta HTTP autenticata in Basic (con PAT) verso Azure DevOps.
+// - Non segue i redirect (CheckRedirect -> ErrUseLastResponse) così da intercettare 3xx.
+// - Restituisce body, status code e l’eventuale errore di rete/IO.
 func httpReq(method, org, project, path, pat string, body []byte, trace bool) ([]byte, int, error) {
 	var urlStr string
 	if project == "" || project == "-" {
@@ -635,11 +670,13 @@ func httpReq(method, org, project, path, pat string, body []byte, trace bool) ([
 	return data, resp.StatusCode, nil
 }
 
+// basicAuth costruisce l’header Authorization Basic a partire dal PAT fornito.
 func basicAuth(pat string) string {
 	token := ":" + pat
 	return "Basic " + base64.StdEncoding.EncodeToString([]byte(token))
 }
 
+// redactToken oscura eventuali credenziali presenti in un URL, utile per log/trace sicuri.
 func redactToken(s string) string {
 	if s == "" {
 		return s
@@ -656,8 +693,8 @@ func redactToken(s string) string {
 	return s
 }
 
-// --- utils ---
-
+// parseSelection converte una stringa di selezione (es. "1,3-5") in una lista
+// di indici zero-based, validando range e duplicati.
 func parseSelection(sel string, max int) ([]int, error) {
 	var out []int
 	parts := strings.Split(sel, ",")
