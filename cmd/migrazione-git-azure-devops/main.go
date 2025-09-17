@@ -16,6 +16,13 @@ import (
 	"strings"
 )
 
+// Variabili di versione impostate da ldflags (-X main.version, etc.)
+var (
+	version = "dev"
+	commit  = "none"
+	date    = ""
+)
+
 const (
 	apiVersion = "7.1"
 )
@@ -47,8 +54,9 @@ type Config struct {
 	Wizard     bool
 	ListOnly   bool
 
-	SrcPAT string
-	DstPAT string
+	SrcPAT      string
+	DstPAT      string
+	ShowVersion bool
 }
 
 // Summary riassume l’esito della migrazione per un singolo repository.
@@ -70,6 +78,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Errore:", err)
 		os.Exit(2)
 	}
+
+	// --version/-v: stampa versione e termina
+	if cfg.ShowVersion {
+		printVersion()
+		return
+	}
+
 	if cfg.Trace {
 		fmt.Fprintln(os.Stderr, "[TRACE] Trace abilitato")
 	}
@@ -161,12 +176,19 @@ func parseArgs(args []string) (Config, error) {
 			cfg.ListOnly = true
 		case "--wizard":
 			cfg.Wizard = true
+		case "--version", "-v":
+			cfg.ShowVersion = true
 		case "-h", "--help":
 			usage()
 			os.Exit(0)
 		default:
 			return cfg, fmt.Errorf("argomento sconosciuto: %s", a)
 		}
+	}
+
+	// Se è richiesta solo la versione, non validare altro
+	if cfg.ShowVersion {
+		return cfg, nil
 	}
 
 	// PAT richiesti: sempre per list/wizard e per migrazione
@@ -199,13 +221,18 @@ func usage() {
 	fmt.Printf(`Uso:
   %s --src-org ORG --src-project PROJ [--dst-org ORG --dst-project PROJ]
                  [--filter REGEX] [--repo-list FILE] [--dry-run] [--force-push]
-                 [--trace] [--list-repos] [--wizard]
+                 [--trace] [--list-repos] [--wizard] [--version]
 
 Esempi:
   %s --src-org myorg --src-project MyProject --list-repos
   %s -so src -sp Proj -do dst -dp ProjDst --wizard
   %s -so src -sp Proj -do dst -dp ProjDst -f '^horse-.*$' --dry-run
-`, name, name, name, name)
+  %s --version
+`, name, name, name, name, name)
+}
+
+func printVersion() {
+	fmt.Printf("%s %s\ncommit: %s\nbuilt:  %s\n", prog(), version, commit, date)
 }
 
 // cmdListRepos elenca i repository nella sorgente e li stampa in output.
