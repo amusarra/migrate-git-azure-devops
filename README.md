@@ -1,5 +1,8 @@
 # Tool di migrazione repository Git Azure DevOps tra progetti/organizzazioni
 
+![Go Build](https://github.com/amusarra/migrazione-git-azure-devops/actions/workflows/build.yml/badge.svg)
+![Go Release](https://github.com/amusarra/migrazione-git-azure-devops/actions/workflows/release.yml/badge.svg)
+
 CLI in Go per migrare repository Git tra progetti/organizzazioni Azure DevOps:
 
 - modalità interattiva (wizard) o non interattiva (flag)
