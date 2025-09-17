@@ -116,24 +116,28 @@ Output e report:
 
 Sono disponibili diverse opzioni per installare il tool.
 
+> Accertarsi di avere Go 1.22+ installato e anche GOPATH/bin nel PATH oltre a git per la build locale.
+
 Opzione A) Da sorgente (Go 1.22+)
 
 ```bash
-go install github.com/amusarra/migrazione-git-azuredevops/cmd/migrazione-git-azure-devops@latest
+go install github.com/amusarra/migrazione-git-azure-devops/cmd/migrazione-git-azure-devops@latest
 # il binario sarà $GOPATH/bin/migrazione-git-azure-devops
 ```
 
 Opzione B) Build locale
 
 ```bash
-git clone https://github.com/amusarra/migrazione-git-azuredevops.git
-cd migrazione-git-azuredevops
+git clone https://github.com/amusarra/migrazione-git-azure-devops.git
+cd migrazione-git-azure-devops
 go build -o bin/migrazione-git-azure-devops ./cmd/migrazione-git-azure-devops
 ```
 
 ## Build e Release (per maintainer)
 
-Snapshot con GoReleaser (artefatti in dist/)
+Snapshot con GoReleaser (artefatti in dist/).
+
+> Accertarsi di avere GoReleaser installato (<https://goreleaser.com/install/>).
 
 ```bash
 goreleaser release --clean --snapshot --skip=publish
@@ -157,7 +161,7 @@ CI (GitHub Actions)
   - SRC_PAT richiesto sempre (anche per --list-repos)
   - DST_PAT richiesto quando si specifica la destinazione (migrazione)
 - Trace:
-  - abilita “[TRACE] ...” con URL richiesti
+  - abilita "[TRACE] ..." con URL richiesti
   - stampa il body delle risposte HTTP in errore
 - Dry-run:
   - nessuna modifica lato Azure DevOps
