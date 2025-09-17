@@ -17,6 +17,10 @@ Requisiti credenziali:
 
 > Nota: per generare PAT con i permessi necessari, vedere la [documentazione Microsoft](https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate)
 
+A seguire un esempio del tool in azione.
+
+[![asciicast](https://asciinema.org/a/741276.svg)](https://asciinema.org/a/741276?t=0:12)
+
 ## Quickstart
 
 - Il primo passo è creare due PAT (Personal Access Token) con i permessi necessari e esportarli come variabili d'ambiente:
@@ -100,7 +104,7 @@ Esempi:
   # File con la lista dei repository da migrare (uno per riga, "#" per commenti)
   horse-core
   horse-svc
-  horse-tool-test-coop-services
+  horse-cli
   ```
 
   ```bash
@@ -135,6 +139,32 @@ git clone https://github.com/amusarra/migrazione-git-azure-devops.git
 cd migrazione-git-azure-devops
 go build -o bin/migrazione-git-azure-devops ./cmd/migrazione-git-azure-devops
 ```
+
+Opzione C) Da release (binari precompilati)
+
+- Vai alla pagina Release: https://github.com/amusarra/migrazione-git-azure-devops/releases
+- Scarica il binario per la tua piattaforma:
+  - Linux AMD64: migrazione-git-azure-devops_linux_amd64
+  - Linux ARM64: migrazione-git-azure-devops_linux_arm64
+  - macOS Apple Silicon: migrazione-git-azure-devops_darwin_arm64
+  - macOS Intel: migrazione-git-azure-devops_darwin_amd64
+  - Windows: migrazione-git-azure-devops_windows_amd64.exe (o arm64)
+
+Esempi download via curl (sostituisci vX.Y.Z con la versione desiderata):
+
+```bash
+# Linux AMD64
+curl -L -o /usr/local/bin/migrazione-git-azure-devops \
+  https://github.com/amusarra/migrazione-git-azure-devops/releases/download/vX.Y.Z/migrazione-git-azure-devops_linux_amd64
+chmod +x /usr/local/bin/migrazione-git-azure-devops
+
+# macOS Apple Silicon
+curl -L -o /usr/local/bin/migrazione-git-azure-devops \
+  https://github.com/amusarra/migrazione-git-azure-devops/releases/download/vX.Y.Z/migrazione-git-azure-devops_darwin_arm64
+chmod +x /usr/local/bin/migrazione-git-azure-devops
+```
+
+Facoltativo: verifica checksum (scarica checksums.txt dalla release e verifica l’hash).
 
 ## Build e Release (per maintainer)
 
