@@ -3,7 +3,8 @@ name: Go Release
 on:
   push:
     tags:
-      - "v*.*.*"   # trigger su tag tipo v1.0.0
+      - "*.*.*"
+      - "*.*.*-*"  # include pre-release tags
 
 jobs:
   goreleaser:
