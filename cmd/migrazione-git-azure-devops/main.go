@@ -557,13 +557,22 @@ func getRepos(org, project, pat string, trace bool) ([]Repo, error) {
 	path := fmt.Sprintf("_apis/git/repositories?api-version=%s", apiVersion)
 	body, code, err := httpReq("GET", org, project, path, pat, nil, trace)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[ERRORE API] Chiamata fallita: %v\n", err)
 		return nil, err
 	}
 	if code < 200 || code >= 300 {
+		fmt.Fprintf(os.Stderr, "[ERRORE API] HTTP %d\n", code)
+		if trace {
+			fmt.Fprintf(os.Stderr, "[TRACE] Body: %s\n", string(body))
+		}
 		return nil, fmt.Errorf("errore API (HTTP %d): %s", code, string(body))
 	}
 	var resp listReposResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
+		fmt.Fprintf(os.Stderr, "[ERRORE API] Risposta non valida: %v\n", err)
+		if trace {
+			fmt.Fprintf(os.Stderr, "[TRACE] Body: %s\n", string(body))
+		}
 		return nil, fmt.Errorf("risposta non valida: %w", err)
 	}
 	return resp.Value, nil
@@ -575,9 +584,11 @@ func createRepo(org, project, pat, name string, trace bool) error {
 	b, _ := json.Marshal(payload)
 	body, code, err := httpReq("POST", org, project, path, pat, b, trace)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[ERRORE API] Chiamata fallita: %v\n", err)
 		return err
 	}
 	if code != 200 && code != 201 {
+		fmt.Fprintf(os.Stderr, "[ERRORE API] HTTP %d: %s\n", code, string(body))
 		return fmt.Errorf("errore API creazione repo (HTTP %d): %s", code, string(body))
 	}
 	return nil
@@ -605,7 +616,13 @@ func httpReq(method, org, project, path, pat string, body []byte, trace bool) ([
 		req.Header.Set("Content-Type", "application/json")
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{
+		Timeout: 60 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse // non seguire i redirect
+		},
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, 0, err
 	}
