@@ -506,12 +506,38 @@ func migrateRepos(cfg Config, repos []Repo, dstExists map[string]bool, forcePush
 }
 
 func printSummary(results []Summary) {
-	fmt.Println("===== RIEPILOGO MIGRAZIONE =====")
-	fmt.Printf("%-40s | %-22s | %-50s | %s\n", "Repository", "Esito", "Azure URL", "URL di clone")
-	fmt.Printf("%-40s-+-%-22s-+-%-50s-+-%s\n", strings.Repeat("-", 40), strings.Repeat("-", 22), strings.Repeat("-", 50), strings.Repeat("-", 45))
+	headers := []string{"Repository", "Esito", "Azure URL"}
+	// Calcola larghezze massime
+	repoCol, esitoCol, azureCol := len(headers[0]), len(headers[1]), len(headers[2])
 	for _, s := range results {
-		fmt.Printf("%-40s | %-22s | %-50s | %s\n", s.Repo, s.Result, s.DstWebURL, s.DstClone)
+		if len(s.Repo) > repoCol {
+			repoCol = len(s.Repo)
+		}
+		if len(s.Result) > esitoCol {
+			esitoCol = len(s.Result)
+		}
+		if len(s.DstWebURL) > azureCol {
+			azureCol = len(s.DstWebURL)
+		}
 	}
+	sep := "+" + strings.Repeat("-", repoCol+2) +
+		"+" + strings.Repeat("-", esitoCol+2) +
+		"+" + strings.Repeat("-", azureCol+2) + "+"
+
+	fmt.Println("===== RIEPILOGO MIGRAZIONE =====")
+	fmt.Println(sep)
+	fmt.Printf("| %-*s | %-*s | %-*s |\n",
+		repoCol, headers[0],
+		esitoCol, headers[1],
+		azureCol, headers[2])
+	fmt.Println(sep)
+	for _, s := range results {
+		fmt.Printf("| %-*s | %-*s | %-*s |\n",
+			repoCol, s.Repo,
+			esitoCol, s.Result,
+			azureCol, s.DstWebURL)
+	}
+	fmt.Println(sep)
 	fmt.Println(strings.Repeat("=", 32))
 }
 
