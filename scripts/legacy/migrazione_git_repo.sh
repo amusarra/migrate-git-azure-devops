@@ -11,17 +11,17 @@ set -euo pipefail
 # Esempi:
 #   ./migrazione_git_repo.sh --src-org myorg --src-project MyProject \
 #                --dst-org targetorg --dst-project TargetProject \
-#                --filter 'ansc-*'
+#                --filter 'horse-*'
 #
-#   ./migrazione_git_repo.sh -so myorg -sp MyProject -do targetorg -dp TargetProject -f '^ansc-(core|svc)-.*$' --dry-run
+#   ./migrazione_git_repo.sh -so myorg -sp MyProject -do targetorg -dp TargetProject -f '^horse-(core|svc)-.*$' --dry-run
 #
 # Note:
-# - Il filtro accetta sia regex (es. '^ansc-.*$') sia glob tipo shell (es. 'ansc-*').
+# - Il filtro accetta sia regex (es. '^horse-.*$') sia glob tipo shell (es. 'horse-*').
 # - In --dry-run NON vengono create repo in destinazione né eseguiti push: vengono solo mostrati i piani d'azione.
 # - Il mirror replica TUTTI i ref (branch, tag) e rimuove quelli cancellati (comportamento simile a --prune).
 # - Se la repo esiste già in destinazione, il push NON viene eseguito a meno di usare --force-push.
 #
-# Autore: Antonio Musarra <amusarr@sogei.it>
+# Autore: Antonio Musarra <antonio.musarra@gmail.com>
 # Date: 2024-09-16
 # Version: 1.0.1
 #
@@ -189,7 +189,7 @@ Opzioni:
   --src-project,-sp  Progetto sorgente
   --dst-org,   -do   Organizzazione destinazione
   --dst-project,-dp  Progetto destinazione
-  --filter,    -f    Filtro su nome repo (regex o glob tipo 'ansc-*')
+  --filter,    -f    Filtro su nome repo (regex o glob tipo 'horse-*')
   --repo-list, -rl   File con lista di repository da migrare (uno per riga, ignora --filter)
   --dry-run           Non crea/pusha sulla destinazione; stampa solo cosa farebbe
   --trace,     -t     Abilita il trace (set -x)
@@ -203,8 +203,8 @@ Autenticazione:
     DST_PAT  PAT per org/progetto destinazione (scope: Code -> Read, write, & manage)
 
 Esempi:
-  migrazione_git_repo.sh -so srcorg -sp SrcProj -do dstorg -dp DstProj -f 'ansc-*'
-  migrazione_git_repo.sh -so srcorg -sp SrcProj -do dstorg -dp DstProj -f '^ansc-.*$' --dry-run
+  migrazione_git_repo.sh -so srcorg -sp SrcProj -do dstorg -dp DstProj -f 'horse-*'
+  migrazione_git_repo.sh -so srcorg -sp SrcProj -do dstorg -dp DstProj -f '^horse-.*$' --dry-run
 EOF
 }
 
