@@ -219,14 +219,14 @@ go build -o bin/migrazione-git-azure-devops ./cmd/migrazione-git-azure-devops
 
 CI (GitHub Actions)
 
-- Lint con golangci-lint (vedi .github/workflows/build.yml)
+- Lint con golangci-lint (vedi `.github/workflows/build.yml`)
 - GoReleaser in modalità snapshot carica gli artefatti come artifact di workflow.
-- La release completa (senza --snapshot) genera changelog e pubblica gli artefatti (vedi .github/workflows/release.yml).
+- La release completa (senza --snapshot) genera changelog e pubblica gli artefatti (vedi `.github/workflows/release.yml`).
 
 ## Note e consigli
 
 - PAT:
-  - SRC_PAT richiesto sempre (anche per --list-repos)
+  - SRC_PAT richiesto sempre (anche per `--list-repos`)
   - DST_PAT richiesto quando si specifica la destinazione (migrazione)
 - Trace:
   - abilita "[TRACE] ..." con URL richiesti
