@@ -12,8 +12,8 @@ CLI in Go per migrare repository Git tra progetti/organizzazioni Azure DevOps:
 
 Requisiti credenziali:
 
-- SRC_PAT: Personal access token con scope “Code Read”
-- DST_PAT: Personal access token con scope “Code Read, Write & Manage” (richiesto per migrazione)
+- SRC_PAT: Personal access token con scope "Code Read"
+- DST_PAT: Personal access token con scope "Code Read, Write & Manage" (richiesto per migrazione)
 
 > Nota: per generare PAT con i permessi necessari, vedere la [documentazione Microsoft](https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate)
 
@@ -71,18 +71,18 @@ A seguire un esempio del tool in azione.
 
 Flag principali:
 
-- --src-org, -so: organizzazione sorgente
-- --src-project, -sp: progetto sorgente
-- --dst-org, -do: organizzazione destinazione
-- --dst-project, -dp: progetto destinazione
-- --filter, -f: regex dei repository da migrare (es: '^horse-.*$')
-- --repo-list, -rl: file con lista nomi repo (uno per riga, "#" per commenti)
-- --dry-run: non esegue modifiche, mostra solo le azioni
-- --force-push, -fp: forza push mirror su repo già esistenti
-- --trace, -t: output di debug; mostra anche body delle risposte HTTP in errore
-- --list-repos: elenca i repository della sorgente e termina
-- --wizard: modalità interattiva
-- -h, --help: help
+- `--src-org`, `-so`: organizzazione sorgente
+- `--src-project`, `-sp`: progetto sorgente
+- `--dst-org`, `-do`: organizzazione destinazione
+- `--dst-project`, `-dp`: progetto destinazione
+- `--filter`, `-f`: regex dei repository da migrare (es: '^horse-.*$')
+- `--repo-list`, `-rl`: file con lista nomi repo (uno per riga, "#" per commenti)
+- `--dry-run`: non esegue modifiche, mostra solo le azioni
+- `--force-push`, `-fp`: forza push mirror su repo già esistenti
+- `--trace`, `-t`: output di debug; mostra anche body delle risposte HTTP in errore
+- `--list-repos`: elenca i repository della sorgente e termina
+- `--wizard`: modalità interattiva
+- `-h`, `--help`: help
 
 Esempi:
 
@@ -128,8 +128,9 @@ Sono disponibili diverse opzioni per installare il tool.
 Opzione A) Da sorgente (Go 1.22+)
 
 ```bash
+# Installazione tramite 'go install'
+# Il binario sarà $GOPATH/bin/migrazione-git-azure-devops
 go install github.com/amusarra/migrazione-git-azure-devops/cmd/migrazione-git-azure-devops@latest
-# il binario sarà $GOPATH/bin/migrazione-git-azure-devops
 ```
 
 Opzione B) Build locale
@@ -151,6 +152,8 @@ Opzione C) Da release (binari precompilati)
   - Windows AMD64: migrazione-git-azure-devops_x.y.z_windows_amd64.zip
   - Windows ARM64: migrazione-git-azure-devops_x.y.z_windows_arm64.zip
 
+> Sui comandi di seguito, sostituisci `x.y.z` con la versione desiderata (es. `1.0.0-RC.4`).
+
 Installazione sistema su ambienti Unix-like (richiede sudo e /usr/local/bin esistente):
 
 ```bash
@@ -171,7 +174,7 @@ tar -xzf "$TMP/migrazione-git-azure-devops_darwin_arm64.tar.gz" -o -C "$TMP"
 sudo install -m 0755 "$TMP/migrazione-git-azure-devops_darwin_arm64" /usr/local/bin/migrazione-git-azure-devops
 ```
 
-Installazione sistema su Windows (PowerShell, copia in $HOME):
+Installazione sistema su Windows (PowerShell, copia in $HOME).
 
 ```bash
 # Windows (PowerShell)
@@ -194,6 +197,10 @@ commit: 19dd541501d82a0d6fc274a01538ee67db6ff8ee
 built:  2025-09-17T15:51:04Z
 ```
 
+L'immagine seguente mostra l'output di `--version` e `--help` su di un sistema Microsoft Windows.
+
+![screenshot-windows-help-version](docs/resources/images/verifica_dopo_installazione_tool_su_windows.jpg)
+
 ## Build e Release (per maintainer)
 
 Snapshot con GoReleaser (artefatti in dist/).
@@ -212,9 +219,9 @@ go build -o bin/migrazione-git-azure-devops ./cmd/migrazione-git-azure-devops
 
 CI (GitHub Actions)
 
-- Lint con golangci-lint.
+- Lint con golangci-lint (vedi .github/workflows/build.yml)
 - GoReleaser in modalità snapshot carica gli artefatti come artifact di workflow.
-- La release completa (senza --snapshot) genera changelog e pubblica gli artefatti.
+- La release completa (senza --snapshot) genera changelog e pubblica gli artefatti (vedi .github/workflows/release.yml).
 
 ## Note e consigli
 
