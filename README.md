@@ -189,7 +189,11 @@ Facoltativo: verifica checksum (scarica checksums.txt dalla release e verifica l
 Dopo l’installazione, verifica la versione:
 
 ```bash
+# Esecuzione su Unix-like (Linux, macOS)
 migrazione-git-azure-devops --version
+
+# Esecuzione su Windows (PowerShell) da $HOME
+.\migrazione-git-azure-devops.exe --version
 
 # Esempio di output:
 migrazione-git-azure-devops 1.0.0-RC.4
