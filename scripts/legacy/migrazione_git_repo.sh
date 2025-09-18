@@ -358,17 +358,21 @@ main() {
         fi
       else
         echo "  Push --mirror verso destinazione..."
-        (
-          cd "${TMPDIR}/${REPO}.git"
-          git remote add dest "$DST_URL"
+        if (
+          cd "${TMPDIR}/${REPO}.git" &&
+          git remote add dest "$DST_URL" &&
           if [[ $FORCE_PUSH -eq 1 ]]; then
             git push --quiet --mirror --force dest
           else
             git push --quiet --mirror dest
           fi
-        )
-        echo "  OK."
-        STATUS="OK"
+        ); then
+          echo "  OK."
+          STATUS="OK"
+        else
+          echo "  Errore nel push verso destinazione (continuo)"
+          STATUS="ERRORE: push"
+        fi
       fi
     fi
 
