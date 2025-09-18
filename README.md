@@ -116,7 +116,7 @@ Output e report:
 - Al termine viene stampata una tabella di riepilogo della migrazione: Repository, Esito, Azure URL.
 - In caso di errori API:
   - viene mostrato "[ERRORE API] HTTP {{codice}}"
-  - in modalità --trace viene mostrato anche il body della risposta
+  - in modalità `--trace` viene mostrato anche il body della risposta
 - I redirect HTTP (3xx) non vengono seguiti: se il PAT è errato potresti vedere 302 invece di una 200 con pagina HTML.
 
 ## Installazione
@@ -142,14 +142,16 @@ go build -o bin/migrazione-git-azure-devops ./cmd/migrazione-git-azure-devops
 
 Opzione C) Da release (binari precompilati)
 
-- Vai alla pagina Release: https://github.com/amusarra/migrazione-git-azure-devops/releases
-- Scarica il pacchetto per la tua piattaforma (tar.gz)
+- Vai alla pagina Release: <https://github.com/amusarra/migrazione-git-azure-devops/releases>
+- Scarica il pacchetto per la tua piattaforma (tar.gz o .zip)
   - Linux AMD64: migrazione-git-azure-devops_x.y.z_linux_amd64.tar.gz
   - Linux ARM64: migrazione-git-azure-devops_x.y.z_linux_arm64.tar.gz
   - macOS Apple Silicon: migrazione-git-azure-devops_x.y.z_darwin_arm64.tar.gz
   - macOS Intel: migrazione-git-azure-devops_x.y.z_darwin_amd64.tar.gz
+  - Windows AMD64: migrazione-git-azure-devops_x.y.z_windows_amd64.zip
+  - Windows ARM64: migrazione-git-azure-devops_x.y.z_windows_arm64.zip
 
-Installazione sistema (richiede sudo e /usr/local/bin esistente):
+Installazione sistema su ambienti Unix-like (richiede sudo e /usr/local/bin esistente):
 
 ```bash
 # Linux AMD64
@@ -169,7 +171,28 @@ tar -xzf "$TMP/migrazione-git-azure-devops_darwin_arm64.tar.gz" -o -C "$TMP"
 sudo install -m 0755 "$TMP/migrazione-git-azure-devops_darwin_arm64" /usr/local/bin/migrazione-git-azure-devops
 ```
 
+Installazione sistema su Windows (PowerShell, copia in $HOME):
+
+```bash
+# Windows (PowerShell)
+$TMP = New-Item -ItemType Directory -Path (Join-Path $env:TEMP (New-Guid))
+Invoke-WebRequest -Uri "https://github.com/amusarra/migrazione-git-azure-devops/releases/download/x.y.z/migrazione-git-azure-devops_x.y.z_windows_amd64.zip" -OutFile "$TMP/migrazione-git-azure-devops.zip"
+Expand-Archive -Path "$TMP/migrazione-git-azure-devops.zip" -DestinationPath "$TMP"
+Copy-Item -Recurse -Force "$TMP/migrazione-git-azure-devops_windows_amd64.exe" "$HOME/migrazione-git-azure-devops.exe"
+```
+
 Facoltativo: verifica checksum (scarica checksums.txt dalla release e verifica l’hash).
+
+Dopo l’installazione, verifica la versione:
+
+```bash
+migrazione-git-azure-devops --version
+
+# Esempio di output:
+migrazione-git-azure-devops 1.0.0-RC.4
+commit: 19dd541501d82a0d6fc274a01538ee67db6ff8ee
+built:  2025-09-17T15:51:04Z
+```
 
 ## Build e Release (per maintainer)
 
