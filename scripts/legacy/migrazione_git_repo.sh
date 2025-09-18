@@ -22,8 +22,6 @@ set -euo pipefail
 # - Se la repo esiste già in destinazione, il push NON viene eseguito a meno di usare --force-push.
 #
 # Autore: Antonio Musarra <antonio.musarra@gmail.com>
-# Date: 2024-09-16
-# Version: 1.0.1
 #
 
 SRC_ORG=""
@@ -358,17 +356,21 @@ main() {
         fi
       else
         echo "  Push --mirror verso destinazione..."
-        (
-          cd "${TMPDIR}/${REPO}.git"
-          git remote add dest "$DST_URL"
+        if (
+          cd "${TMPDIR}/${REPO}.git" &&
+          git remote add dest "$DST_URL" &&
           if [[ $FORCE_PUSH -eq 1 ]]; then
             git push --quiet --mirror --force dest
           else
             git push --quiet --mirror dest
           fi
-        )
-        echo "  OK."
-        STATUS="OK"
+        ); then
+          echo "  OK."
+          STATUS="OK"
+        else
+          echo "  Errore nel push verso destinazione (continuo)"
+          STATUS="ERRORE: push"
+        fi
       fi
     fi
 
