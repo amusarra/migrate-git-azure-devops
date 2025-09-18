@@ -7,7 +7,7 @@ on:
   push:
     tags:
       - "*.*.*"
-      - "*.*.*-*"  # include pre-release tags
+      - "*.*.*-*" # include pre-release tags
 
 jobs:
   goreleaser:
@@ -16,12 +16,22 @@ jobs:
       - name: Checkout codice
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # necessario per changelog
+          fetch-depth: 0 # necessario per changelog
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.25"
+
+      - name: Cache Go modules
+        uses: actions/cache@v4.2.4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
       - name: Setup GoReleaser
         uses: goreleaser/goreleaser-action@v6.4.0
