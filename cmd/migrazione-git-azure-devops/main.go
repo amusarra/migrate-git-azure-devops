@@ -6,7 +6,6 @@ package main
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -72,165 +71,14 @@ type Summary struct {
 	ErrDetails string
 }
 
-// main è il punto di ingresso dell’applicazione: valida i parametri e inoltra ai flussi
-// list-only, wizard o esecuzione non interattiva.
+// main è il punto di ingresso dell’applicazione: delega a Execute() definita in root.go.
 func main() {
-	cfg, err := parseArgs(os.Args[1:])
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Errore:", err)
-		os.Exit(2)
-	}
-
-	// --version/-v: stampa versione e termina
-	if cfg.ShowVersion {
-		printVersion()
-		return
-	}
-
-	if cfg.Trace {
-		fmt.Fprintln(os.Stderr, "[TRACE] Trace abilitato")
-	}
-
-	// Validazioni minime
-	if cfg.SrcOrg == "" || cfg.SrcProject == "" {
-		fmt.Fprintln(os.Stderr, "Errore: --src-org e --src-project sono obbligatori")
-		os.Exit(2)
-	}
-	if cfg.ListOnly || cfg.Wizard || (cfg.DstOrg != "" && cfg.DstProject != "") {
-		// ok
-	} else {
-		fmt.Fprintln(os.Stderr, "Errore: specificare destinazione (--dst-org, --dst-project) oppure usare --list-repos/--wizard")
-		os.Exit(2)
-	}
-
-	// Modalità: lista repository e termina
-	if cfg.ListOnly {
-		if err := cmdListRepos(cfg); err != nil {
-			os.Exit(1)
-		}
-		return
-	}
-
-	// Wizard interattivo
-	if cfg.Wizard {
-		if err := runWizard(cfg); err != nil {
-			fmt.Fprintln(os.Stderr, "Errore:", err)
-			os.Exit(1)
-		}
-		return
-	}
-
-	// Modalità non interattiva (flag)
-	if err := runNonInteractive(cfg); err != nil {
-		fmt.Fprintln(os.Stderr, "Errore:", err)
-		os.Exit(1)
-	}
-}
-
-// parseArgs interpreta gli argomenti CLI e le variabili d’ambiente (SRC_PAT/DST_PAT).
-// Valida la presenza degli elementi minimi e restituisce una Config pronta all’uso.
-func parseArgs(args []string) (Config, error) {
-	cfg := Config{}
-	// Env PAT
-	cfg.SrcPAT = strings.TrimSpace(os.Getenv("SRC_PAT"))
-	cfg.DstPAT = strings.TrimSpace(os.Getenv("DST_PAT"))
-
-	for i := 0; i < len(args); i++ {
-		a := args[i]
-		switch a {
-		case "--src-org", "-so":
-			i++
-			cfg.SrcOrg = val(args, i)
-		case "--src-project", "-sp":
-			i++
-			cfg.SrcProject = val(args, i)
-		case "--dst-org", "-do":
-			i++
-			cfg.DstOrg = val(args, i)
-		case "--dst-project", "-dp":
-			i++
-			cfg.DstProject = val(args, i)
-		case "--filter", "-f":
-			i++
-			cfg.Filter = val(args, i)
-		case "--repo-list", "-rl":
-			i++
-			path := val(args, i)
-			if path != "" {
-				lines, err := os.ReadFile(path)
-				if err != nil {
-					return cfg, err
-				}
-				for _, ln := range strings.Split(string(lines), "\n") {
-					ln = strings.TrimSpace(ln)
-					if ln != "" && !strings.HasPrefix(ln, "#") {
-						cfg.RepoList = append(cfg.RepoList, ln)
-					}
-				}
-			}
-		case "--dry-run":
-			cfg.DryRun = true
-		case "--force-push", "-fp":
-			cfg.ForcePush = true
-		case "--trace", "-t":
-			cfg.Trace = true
-		case "--list-repos":
-			cfg.ListOnly = true
-		case "--wizard":
-			cfg.Wizard = true
-		case "--version", "-v":
-			cfg.ShowVersion = true
-		case "-h", "--help":
-			usage()
-			os.Exit(0)
-		default:
-			return cfg, fmt.Errorf("argomento sconosciuto: %s", a)
-		}
-	}
-
-	// Se è richiesta solo la versione, non validare altro
-	if cfg.ShowVersion {
-		return cfg, nil
-	}
-
-	// PAT richiesti: sempre per list/wizard e per migrazione
-	if cfg.SrcPAT == "" {
-		return cfg, errors.New("variabile ambiente SRC_PAT mancante")
-	}
-	if !cfg.ListOnly && cfg.DstOrg != "" && cfg.DstProject != "" && cfg.DstPAT == "" {
-		return cfg, errors.New("variabile ambiente DST_PAT mancante per la destinazione")
-	}
-
-	return cfg, nil
-}
-
-// val restituisce l’argomento args[i] se esiste, altrimenti una stringa vuota.
-func val(args []string, i int) string {
-	if i >= 0 && i < len(args) {
-		return args[i]
-	}
-	return ""
+	Execute()
 }
 
 // prog restituisce il basename dell’eseguibile in esecuzione.
 func prog() string {
 	return filepath.Base(os.Args[0])
-}
-
-// usage stampa a video l’help dell’applicazione.
-func usage() {
-	name := prog()
-	fmt.Printf(`Uso:
-  %s --src-org ORG --src-project PROJ [--dst-org ORG --dst-project PROJ]
-                 [--filter REGEX] [--repo-list FILE] [--dry-run] [--force-push]
-                 [--trace] [--list-repos] [--wizard] [--version]
-
-Esempi:
-  %s --src-org myorg --src-project MyProject --list-repos
-  %s -so src -sp Proj -do dst -dp ProjDst --wizard
-  %s -so src -sp Proj -do dst -dp ProjDst -f '^horse-.*$' --dry-run
-  %s --version
-`, name, name, name, name, name)
 }
 
 func printVersion() {
@@ -241,7 +89,7 @@ func printVersion() {
 func cmdListRepos(cfg Config) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	
+
 	repos, err := getRepos(ctx, cfg.SrcOrg, cfg.SrcProject, cfg.SrcPAT, cfg.Trace)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[ERRORE API] Chiamata fallita per %s/%s: %v\n", cfg.SrcOrg, cfg.SrcProject, err)
@@ -266,7 +114,7 @@ func cmdListRepos(cfg Config) error {
 func runWizard(cfg Config) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-	
+
 	in := bufio.NewReader(os.Stdin)
 
 	// 1) Lista repo sorgente
@@ -377,7 +225,7 @@ func runWizard(cfg Config) error {
 func runNonInteractive(cfg Config) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
-	
+
 	// carica lista sorgente
 	srcRepos, err := getRepos(ctx, cfg.SrcOrg, cfg.SrcProject, cfg.SrcPAT, cfg.Trace)
 	if err != nil {
