@@ -272,6 +272,10 @@ func runWizard(cfg Config) error {
 	// 1) Lista repo sorgente
 	repos, err := getRepos(ctx, cfg.SrcOrg, cfg.SrcProject, cfg.SrcPAT, cfg.Trace)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[ERRORE API] Chiamata fallita per sorgente %s/%s: %v\n", cfg.SrcOrg, cfg.SrcProject, err)
+		if cfg.Trace {
+			fmt.Fprintf(os.Stderr, "[TRACE] Dettagli errore: %v\n", err)
+		}
 		return err
 	}
 	if len(repos) == 0 {
@@ -303,6 +307,10 @@ func runWizard(cfg Config) error {
 	// 3) Verifica esistenza in destinazione
 	dstRepos, err := getRepos(ctx, cfg.DstOrg, cfg.DstProject, cfg.DstPAT, cfg.Trace)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[ERRORE API] Chiamata fallita per destinazione %s/%s: %v\n", cfg.DstOrg, cfg.DstProject, err)
+		if cfg.Trace {
+			fmt.Fprintf(os.Stderr, "[TRACE] Dettagli errore: %v\n", err)
+		}
 		return err
 	}
 	exists := map[string]bool{}
@@ -373,6 +381,10 @@ func runNonInteractive(cfg Config) error {
 	// carica lista sorgente
 	srcRepos, err := getRepos(ctx, cfg.SrcOrg, cfg.SrcProject, cfg.SrcPAT, cfg.Trace)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[ERRORE API] Chiamata fallita per sorgente %s/%s: %v\n", cfg.SrcOrg, cfg.SrcProject, err)
+		if cfg.Trace {
+			fmt.Fprintf(os.Stderr, "[TRACE] Dettagli errore: %v\n", err)
+		}
 		return err
 	}
 
@@ -430,6 +442,10 @@ func runNonInteractive(cfg Config) error {
 	// destinazione
 	dstRepos, err := getRepos(ctx, cfg.DstOrg, cfg.DstProject, cfg.DstPAT, cfg.Trace)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[ERRORE API] Chiamata fallita per destinazione %s/%s: %v\n", cfg.DstOrg, cfg.DstProject, err)
+		if cfg.Trace {
+			fmt.Fprintf(os.Stderr, "[TRACE] Dettagli errore: %v\n", err)
+		}
 		return err
 	}
 	exists := map[string]bool{}
@@ -519,7 +535,10 @@ func migrateRepos(ctx context.Context, cfg Config, repos []Repo, dstExists map[s
 			if err := createRepo(ctx, cfg.DstOrg, cfg.DstProject, cfg.DstPAT, r.Name, cfg.Trace); err != nil {
 				sum.Result = "ERRORE: creazione destinazione"
 				sum.ErrDetails = err.Error()
-				fmt.Println("  Errore nella creazione della repo in destinazione")
+				fmt.Printf("  Errore nella creazione della repo %s in destinazione: %v\n", r.Name, err)
+				if cfg.Trace {
+					fmt.Fprintf(os.Stderr, "[TRACE] Dettagli errore creazione repo: %v\n", err)
+				}
 				results = append(results, sum)
 				continue
 			}
