@@ -110,10 +110,17 @@ jobs:
           $tag = "${{ github.ref_name }}"
           $repo = "${{ github.repository }}"
           $releaseDir = "$env:RUNNER_TEMP\release"
-          gh release upload $tag "$releaseDir\**\*.exe" --repo $repo --clobber
-          gh release upload $tag "$releaseDir\**\*.zip" --repo $repo --clobber
-          $tag = "${{ github.ref_name }}"
-          $repo = "${{ github.repository }}"
-          $releaseDir = "$env:RUNNER_TEMP\release"
-          gh release upload $tag "$releaseDir\**\*.exe" --repo $repo --clobber
-          gh release upload $tag "$releaseDir\**\*.zip" --repo $repo --clobber
+
+          $exeFiles = Get-ChildItem -Path $releaseDir -Recurse -Filter *.exe | Select-Object -ExpandProperty FullName
+          if ($exeFiles) {
+            gh release upload $tag $exeFiles --repo $repo --clobber
+          } else {
+            Write-Host "Nessun file .exe trovato per upload"
+          }
+
+          $zipFiles = Get-ChildItem -Path $releaseDir -Recurse -Filter *.zip | Select-Object -ExpandProperty FullName
+          if ($zipFiles) {
+            gh release upload $tag $zipFiles --repo $repo --clobber
+          } else {
+            Write-Host "Nessun file .zip trovato per upload"
+          }
