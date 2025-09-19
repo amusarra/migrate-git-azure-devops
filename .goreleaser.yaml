@@ -47,7 +47,7 @@ builds:
     hooks:
       pre:
         - cmd: go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
-        - cmd: goversioninfo -product-version {{.Version}} -file-version {{.Version}} -product-name "migrazione-git-azure-devops" -company "Antonio Musarra's Blog" -description "Migrazione repository Git tra progetti Azure DevOps" -icon ./cmd/migrazione-git-azure-devops/metadata/logo_32x32.ico -o ./cmd/migrazione-git-azure-devops/versioninfo_windows.syso ./cmd/migrazione-git-azure-devops/metadata/versioninfo.json
+        - cmd: goversioninfo -product-version {{.Version}} -file-version {{.Version}} -product-name "migrazione-git-azure-devops" -company "Antonio Musarra's Blog" -description "Migrazione repository Git tra progetti Azure DevOps" -copyright "Copyright (c) 2025 Antonio Musarra\'s Blog" -icon ./cmd/migrazione-git-azure-devops/metadata/logo_32x32.ico -o ./cmd/migrazione-git-azure-devops/versioninfo_windows.syso ./cmd/migrazione-git-azure-devops/metadata/versioninfo.json
       post:
         - cmd: rm -f ./cmd/migrazione-git-azure-devops/versioninfo_windows.syso        
 
