@@ -21,16 +21,6 @@ jobs:
         with:
           go-version: "1.25"
 
-      - name: Cache Go modules
-        uses: actions/cache@v4.2.4
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
       - name: Lint (golangci-lint)
         uses: golangci/golangci-lint-action@v8
         with:
