@@ -57,20 +57,15 @@ jobs:
           Export-PfxCertificate -Cert $cert -FilePath $certPath -Password (ConvertTo-SecureString -String $certPass -Force -AsPlainText)
           Write-Host "Certificato generato: $certPath"
 
-      - name: Aggiungi signtool.exe al PATH
+      - name: Trova signtool.exe e aggiungi al PATH
         shell: pwsh
         run: |
-          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          if (-Not (Test-Path $vswhere)) {
-            Write-Error "vswhere.exe non trovato!"
-            exit 1
-          }
-          $signtool = & $vswhere -latest -products * -requires Microsoft.Component.WindowsSDK -find signtool.exe
-          if (-Not $signtool) {
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\" -Recurse -Filter signtool.exe | Where-Object { $_.FullName -like "*x64*" } | Select-Object -First 1
+          if (-not $signtool) {
             Write-Error "signtool.exe non trovato!"
             exit 1
           }
-          $dir = Split-Path $signtool
+          $dir = $signtool.DirectoryName
           $env:PATH = "$dir;$env:PATH"
           Write-Host "PATH aggiornato con signtool.exe: $dir"
 
@@ -112,6 +107,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          $tag = "${{ github.ref_name }}"
+          $repo = "${{ github.repository }}"
+          $releaseDir = "$env:RUNNER_TEMP\release"
+          gh release upload $tag "$releaseDir\**\*.exe" --repo $repo --clobber
+          gh release upload $tag "$releaseDir\**\*.zip" --repo $repo --clobber
           $tag = "${{ github.ref_name }}"
           $repo = "${{ github.repository }}"
           $releaseDir = "$env:RUNNER_TEMP\release"
