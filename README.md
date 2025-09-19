@@ -205,6 +205,17 @@ L'immagine seguente mostra l'output di `--version` e `--help` su di un sistema M
 
 ![screenshot-windows-help-version](docs/resources/images/verifica_dopo_installazione_tool_su_windows.jpg)
 
+### Note per utenti Windows
+
+- Se si usa PowerShell, potrebbe essere necessario modificare la [Execution Policy](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies) per eseguire script scaricati (es. `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`).
+- Windows Defender SmartScreen potrebbe bloccare l'esecuzione del tool scaricato. In tal caso, fare clic con il tasto destro sul file `.exe`, selezionare "Proprietà" e quindi "Sblocca" per consentire l'esecuzione (vedi immagine sotto).
+
+![screenshot-windows-sblocco-file](docs/resources/images/program_on_windows_details_1.jpg)
+
+Il blocco di SmartScreen avviene perché il file `.exe` non è firmato con un certificato riconosciuto da Microsoft. Per firmare il binario, è stato usato un certificato self-signed (non riconosciuto da Microsoft). Fare riferimento alla GitHub Action di release per i dettagli. A seguire un esempio di come vedere il certificato self-signed usato per la firma del binario Windows.
+
+![screenshot-windows-certificato-self-signed](docs/resources/images/program_on_windows_details_3.jpg)
+
 ## Build e Release (per maintainer)
 
 Snapshot con GoReleaser (artefatti in dist/).
