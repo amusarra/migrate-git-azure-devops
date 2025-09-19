@@ -19,7 +19,6 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
-      - windows
       - darwin
     goarch:
       - amd64
@@ -30,10 +29,33 @@ builds:
       - -X main.commit={{.Commit}}
       - -X main.date={{.Date}}
 
+  - id: migrazione-git-azure-devops-windows
+    main: ./cmd/migrazione-git-azure-devops
+    binary: migrazione-git-azure-devops_{{ .Os }}_{{ .Arch }}
+    no_unique_dist_dir: true
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+    goarch:
+      - amd64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+    hooks:
+      pre:
+        - cmd: go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+        - cmd: goversioninfo -product-version {{.Version}} -file-version {{.Version}} -product-name "migrazione-git-azure-devops" -company "Antonio Musarra\'s Blog" -description "Migrazione repository Git tra progetti Azure DevOps" -copyright "Copyright (c) 2025 Antonio Musarra\'s Blog" -o ./cmd/migrazione-git-azure-devops/versioninfo_windows.syso ./cmd/migrazione-git-azure-devops/metadata/versioninfo.json
+      post:
+        - cmd: rm -f ./cmd/migrazione-git-azure-devops/versioninfo_windows.syso        
+
 archives:
   - id: archive
     ids:
       - migrazione-git-azure-devops
+      - migrazione-git-azure-devops-windows
     formats: [tar.gz]
     files:
       - LICENSE
