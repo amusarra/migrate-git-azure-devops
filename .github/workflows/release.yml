@@ -30,3 +30,73 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  codesign:
+    needs: goreleaser
+    runs-on: windows-latest
+    steps:
+      - name: Scarica asset Windows dalla release
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $repo = "${{ github.repository }}"
+          $releaseDir = "$env:RUNNER_TEMP\release"
+          New-Item -ItemType Directory -Path $releaseDir | Out-Null
+          gh release download $tag --repo $repo --dir $releaseDir --pattern "*windows*"
+          Get-ChildItem $releaseDir -Recurse | Format-List
+
+      - name: Genera certificato self-signed (Code Sign)
+        shell: pwsh
+        run: |
+          $certPath = "$env:RUNNER_TEMP\codesign.pfx"
+          $certPass = "githubactions"
+          $subject = "CN=GitHub Actions SelfSign, O=Antonio Musarra, C=IT"
+          $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject $subject -CertStoreLocation "Cert:\CurrentUser\My" -KeyExportPolicy Exportable -KeySpec Signature
+          Export-PfxCertificate -Cert $cert -FilePath $certPath -Password (ConvertTo-SecureString -String $certPass -Force -AsPlainText)
+          Write-Host "Certificato generato: $certPath"
+
+      - name: Firma .exe (standalone e dentro zip)
+        shell: pwsh
+        run: |
+          $certPath = "$env:RUNNER_TEMP\codesign.pfx"
+          $certPass = "githubactions"
+          $releaseDir = "$env:RUNNER_TEMP\release"
+
+          function Sign-Exe($exePath) {
+            & signtool.exe sign /fd SHA256 /f "$certPath" /p "$certPass" /tr http://timestamp.digicert.com /td SHA256 "$exePath"
+          }
+
+          # Firma .exe standalone
+          Get-ChildItem $releaseDir -Filter *.exe -Recurse | ForEach-Object {
+            Write-Host "Firmo $_"
+            Sign-Exe $_.FullName
+          }
+
+          # Firma .exe dentro zip
+          Get-ChildItem $releaseDir -Filter *.zip | ForEach-Object {
+            $zip = $_.FullName
+            $work = Join-Path $env:RUNNER_TEMP ([IO.Path]::GetFileNameWithoutExtension($_.Name))
+            if (Test-Path $work) { Remove-Item $work -Recurse -Force }
+            Expand-Archive -Path $zip -DestinationPath $work -Force
+
+            Get-ChildItem $work -Recurse -Filter *.exe | ForEach-Object {
+              Write-Host "Firmo $_"
+              Sign-Exe $_.FullName
+            }
+
+            Remove-Item $zip -Force
+            Compress-Archive -Path (Get-ChildItem $work) -DestinationPath $zip
+          }
+
+      - name: Carica nuovamente gli asset firmati (clobber)
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $repo = "${{ github.repository }}"
+          $releaseDir = "$env:RUNNER_TEMP\release"
+          gh release upload $tag "$releaseDir\**\*.exe" --repo $repo --clobber
+          gh release upload $tag "$releaseDir\**\*.zip" --repo $repo --clobber
