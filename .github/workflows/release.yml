@@ -47,6 +47,8 @@ jobs:
           gh release download $tag --repo $repo --dir $releaseDir --pattern "*windows*"
           Get-ChildItem $releaseDir -Recurse | Format-List
 
+        # In ambiente reale, usare un certificato valido riconoscibile da Microsoft
+        # per evitare warning all'utente finale.
       - name: Genera certificato self-signed (Code Sign)
         shell: pwsh
         run: |
