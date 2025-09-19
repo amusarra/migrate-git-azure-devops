@@ -57,7 +57,8 @@ jobs:
           Export-PfxCertificate -Cert $cert -FilePath $certPath -Password (ConvertTo-SecureString -String $certPass -Force -AsPlainText)
           Write-Host "Certificato generato: $certPath"
 
-      - name: Trova signtool.exe e aggiungi al PATH
+      - name: Trova percorso signtool.exe
+        id: signtool
         shell: pwsh
         run: |
           $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\" -Recurse -Filter signtool.exe | Where-Object { $_.FullName -like "*x64*" } | Select-Object -First 1
@@ -65,9 +66,7 @@ jobs:
             Write-Error "signtool.exe non trovato!"
             exit 1
           }
-          $dir = $signtool.DirectoryName
-          $env:PATH = "$dir;$env:PATH"
-          Write-Host "PATH aggiornato con signtool.exe: $dir"
+          echo "signtool_path=$($signtool.FullName)" >> $env:GITHUB_ENV
 
       - name: Firma .exe (standalone e dentro zip)
         shell: pwsh
@@ -75,9 +74,10 @@ jobs:
           $certPath = "$env:RUNNER_TEMP\codesign.pfx"
           $certPass = "githubactions"
           $releaseDir = "$env:RUNNER_TEMP\release"
+          $signtool = "${env:signtool_path}"
 
           function Sign-Exe($exePath) {
-            & signtool.exe sign /fd SHA256 /f "$certPath" /p "$certPass" /tr http://timestamp.digicert.com /td SHA256 "$exePath"
+            & "$signtool" sign /fd SHA256 /f "$certPath" /p "$certPass" /tr http://timestamp.digicert.com /td SHA256 "$exePath"
           }
 
           # Firma .exe standalone
