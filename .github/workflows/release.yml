@@ -57,6 +57,23 @@ jobs:
           Export-PfxCertificate -Cert $cert -FilePath $certPath -Password (ConvertTo-SecureString -String $certPass -Force -AsPlainText)
           Write-Host "Certificato generato: $certPath"
 
+      - name: Aggiungi signtool.exe al PATH
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (-Not (Test-Path $vswhere)) {
+            Write-Error "vswhere.exe non trovato!"
+            exit 1
+          }
+          $signtool = & $vswhere -latest -products * -requires Microsoft.Component.WindowsSDK -find signtool.exe
+          if (-Not $signtool) {
+            Write-Error "signtool.exe non trovato!"
+            exit 1
+          }
+          $dir = Split-Path $signtool
+          $env:PATH = "$dir;$env:PATH"
+          Write-Host "PATH aggiornato con signtool.exe: $dir"
+
       - name: Firma .exe (standalone e dentro zip)
         shell: pwsh
         run: |
