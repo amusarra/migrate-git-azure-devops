@@ -119,6 +119,7 @@ func getGitRefNames(repoDir, refType string) ([]string, error) {
 }
 
 // generateHTML genera una rappresentazione HTML del report come tabella, usando Bootstrap e il motore di template.
+// Le informazioni su programma/versione/commit/build sono ora mostrate nel footer, allineate a destra.
 func generateHTML(report Report) string {
 	const tpl = `<!DOCTYPE html>
 <html lang="it">
@@ -180,6 +181,16 @@ func generateHTML(report Report) string {
         {{ end }}
       </tbody>
     </table>
+  </div>
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="text-end text-muted small">
+        <div><strong>Programma:</strong> {{ .ProgramName }}</div>
+        <div><strong>Versione:</strong> {{ .Version }}</div>
+        <div><strong>Commit:</strong> {{ .Commit }}</div>
+        <div><strong>Build Date:</strong> {{ .BuildDate }}</div>
+      </div>
+    </div>
   </div>
 </div>
 </body>

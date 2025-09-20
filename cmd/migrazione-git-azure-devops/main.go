@@ -74,11 +74,15 @@ type Summary struct {
 
 // Report contiene le informazioni globali del report e i riepiloghi per repository.
 type Report struct {
-	StartTime time.Time
-	EndTime   time.Time
-	Duration  float64 // in minuti
-	Hostname  string
-	Summaries []Summary
+	StartTime   time.Time
+	EndTime     time.Time
+	Duration    float64 // in minuti
+	Hostname    string
+	Summaries   []Summary
+	ProgramName string
+	Version     string
+	Commit      string
+	BuildDate   string
 }
 
 // main è il punto di ingresso dell’applicazione: delega a Execute() definita in root.go.
@@ -227,11 +231,15 @@ func runWizard(cfg Config) error {
 	// Genera report se richiesto
 	if cfg.ReportFormats != nil {
 		report := Report{
-			StartTime: startTime,
-			EndTime:   endTime,
-			Duration:  duration,
-			Hostname:  hostname,
-			Summaries: summary,
+			StartTime:   startTime,
+			EndTime:     endTime,
+			Duration:    duration,
+			Hostname:    hostname,
+			Summaries:   summary,
+			ProgramName: prog(),
+			Version:     version,
+			Commit:      commit,
+			BuildDate:   date,
 		}
 		if err := generateAndSaveReport(report, cfg); err != nil {
 			fmt.Fprintln(os.Stderr, "Errore generazione report:", err)
@@ -339,11 +347,15 @@ func runNonInteractive(cfg Config) error {
 	// Genera report se richiesto
 	if cfg.ReportFormats != nil {
 		report := Report{
-			StartTime: startTime,
-			EndTime:   endTime,
-			Duration:  duration,
-			Hostname:  hostname,
-			Summaries: all,
+			StartTime:   startTime,
+			EndTime:     endTime,
+			Duration:    duration,
+			Hostname:    hostname,
+			Summaries:   all,
+			ProgramName: prog(),
+			Version:     version,
+			Commit:      commit,
+			BuildDate:   date,
 		}
 		if err := generateAndSaveReport(report, cfg); err != nil {
 			fmt.Fprintln(os.Stderr, "Errore generazione report:", err)
