@@ -72,25 +72,69 @@ func generateReport(report Report, format, path string) error {
 	}
 }
 
-// generateHTML genera una rappresentazione HTML del report come tabella.
+// generateHTML genera una rappresentazione HTML del report come tabella, usando Bootstrap.
 func generateHTML(report Report) string {
-	html := fmt.Sprintf(`<html><head><title>Migration Report</title></head><body>
-<h1>Migration Report</h1>
-<p><strong>Start Time:</strong> %s</p>
-<p><strong>End Time:</strong> %s</p>
-<p><strong>Duration:</strong> %.2f minutes</p>
-<p><strong>Hostname:</strong> %s</p>
-<table border="1">
-<tr><th>Repository</th><th>Result</th><th>Source URL</th><th>Branches</th><th>Tags</th><th>Size (bytes)</th><th>Destination URL</th></tr>`,
-		report.StartTime.Format("2006-01-02 15:04:05"),
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Migration Report</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-4">
+  <h1 class="mb-4">Migration Report</h1>
+  <div class="row mb-3">
+    <div class="col-md-6">
+      <ul class="list-group">
+        <li class="list-group-item"><strong>Start Time:</strong> %s</li>
+        <li class="list-group-item"><strong>End Time:</strong> %s</li>
+        <li class="list-group-item"><strong>Duration:</strong> %.2f minutes</li>
+        <li class="list-group-item"><strong>Hostname:</strong> %s</li>
+      </ul>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-bordered table-hover align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>Repository</th>
+          <th>Result</th>
+          <th>Source URL</th>
+          <th>Branches</th>
+          <th>Tags</th>
+          <th>Size (bytes)</th>
+          <th>Destination URL</th>
+        </tr>
+      </thead>
+      <tbody>
+`, report.StartTime.Format("2006-01-02 15:04:05"),
 		report.EndTime.Format("2006-01-02 15:04:05"),
 		report.Duration,
 		report.Hostname)
+
 	for _, s := range report.Summaries {
-		html += fmt.Sprintf("<tr><td>%s</td><td>%s</td><td><a href='%s'>%s</a></td><td>%d</td><td>%d</td><td>%d</td><td><a href='%s'>%s</a></td></tr>",
-			s.Repo, s.Result, s.SrcWebURL, s.SrcWebURL, s.NumBranches, s.NumTags, s.Size, s.DstWebURL, s.DstWebURL)
+		html += fmt.Sprintf(`<tr>
+<td>%s</td>
+<td>%s</td>
+<td><a href="%s" target="_blank">%s</a></td>
+<td>%d</td>
+<td>%d</td>
+<td>%d</td>
+<td><a href="%s" target="_blank">%s</a></td>
+</tr>
+`, s.Repo, s.Result, s.SrcWebURL, s.SrcWebURL, s.NumBranches, s.NumTags, s.Size, s.DstWebURL, s.DstWebURL)
 	}
-	html += "</table></body></html>"
+
+	html += `
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>
+`
 	return html
 }
 
