@@ -242,6 +242,8 @@ CI (GitHub Actions)
 
 Il tool può generare un report dettagliato della migrazione in formato **JSON** e/o **HTML**. Questa funzionalità è utile per audit, troubleshooting e documentazione delle attività svolte.
 
+> Questa funzionalità è disponibile dalla versione 1.1.0
+
 ### Come abilitare il report
 
 Aggiungi il flag `--report-format` per scegliere uno o più formati (es. `--report-format json,html`).  
