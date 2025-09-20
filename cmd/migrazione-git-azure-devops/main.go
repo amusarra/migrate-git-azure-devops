@@ -65,9 +65,11 @@ type Summary struct {
 	DstClone    string
 	Skipped     bool
 	ErrDetails  string
-	NumBranches int   // Numero di branch remoti
-	NumTags     int   // Numero di tag
-	Size        int64 // Dimensione del repository in byte
+	NumBranches int      // Numero di branch remoti
+	NumTags     int      // Numero di tag
+	Size        int64    // Dimensione del repository in byte
+	BranchNames []string // Nomi dei branch remoti
+	TagNames    []string // Nomi dei tag
 }
 
 // Report contiene le informazioni globali del report e i riepiloghi per repository.
@@ -413,12 +415,18 @@ func migrateRepos(ctx context.Context, cfg Config, repos []Repo, dstExists map[s
 				results = append(results, sum)
 				continue
 			}
-			// Calcola numero di branch, tag e dimensione dopo il clone
+			// Calcola numero di branch, tag, nomi e dimensione dopo il clone
 			if numBranches, err := countGitRefs(repodir, "branch -r"); err == nil {
 				sum.NumBranches = numBranches
 			}
+			if branchNames, err := getGitRefNames(repodir, "branch -r"); err == nil {
+				sum.BranchNames = branchNames
+			}
 			if numTags, err := countGitRefs(repodir, "tag"); err == nil {
 				sum.NumTags = numTags
+			}
+			if tagNames, err := getGitRefNames(repodir, "tag"); err == nil {
+				sum.TagNames = tagNames
 			}
 			if size, err := dirSize(repodir); err == nil {
 				sum.Size = size

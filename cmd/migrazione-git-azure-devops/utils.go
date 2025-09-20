@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 )
 
@@ -72,9 +74,48 @@ func generateReport(report Report, format, path string) error {
 	}
 }
 
-// generateHTML genera una rappresentazione HTML del report come tabella, usando Bootstrap.
+// getGitRefNames restituisce la lista dei nomi dei branch/tag.
+func getGitRefNames(repoDir, refType string) ([]string, error) {
+	var cmd *exec.Cmd
+	switch refType {
+	case "branch -r":
+		cmd = exec.Command("git", "ls-remote", "--heads", "origin")
+	case "tag":
+		cmd = exec.Command("git", "tag")
+	default:
+		return nil, fmt.Errorf("refType non supportato: %s", refType)
+	}
+	cmd.Dir = repoDir
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Errore comando git %s in %s: %v\n", refType, repoDir, err)
+		return nil, err
+	}
+	var names []string
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if refType == "branch -r" {
+		for _, line := range lines {
+			parts := strings.Fields(line)
+			if len(parts) == 2 {
+				ref := parts[1]
+				if strings.HasPrefix(ref, "refs/heads/") {
+					names = append(names, strings.TrimPrefix(ref, "refs/heads/"))
+				}
+			}
+		}
+	} else {
+		for _, tag := range lines {
+			if tag != "" {
+				names = append(names, tag)
+			}
+		}
+	}
+	return names, nil
+}
+
+// generateHTML genera una rappresentazione HTML del report come tabella, usando Bootstrap e il motore di template.
 func generateHTML(report Report) string {
-	html := fmt.Sprintf(`<!DOCTYPE html>
+	const tpl = `<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="UTF-8">
@@ -88,10 +129,10 @@ func generateHTML(report Report) string {
   <div class="row mb-3">
     <div class="col-md-6">
       <ul class="list-group">
-        <li class="list-group-item"><strong>Start Time:</strong> %s</li>
-        <li class="list-group-item"><strong>End Time:</strong> %s</li>
-        <li class="list-group-item"><strong>Duration:</strong> %.2f minutes</li>
-        <li class="list-group-item"><strong>Hostname:</strong> %s</li>
+        <li class="list-group-item"><strong>Start Time:</strong> {{ .StartTime.Format "2006-01-02 15:04:05" }}</li>
+        <li class="list-group-item"><strong>End Time:</strong> {{ .EndTime.Format "2006-01-02 15:04:05" }}</li>
+        <li class="list-group-item"><strong>Duration:</strong> {{ printf "%.2f" .Duration }} minutes</li>
+        <li class="list-group-item"><strong>Hostname:</strong> {{ .Hostname }}</li>
       </ul>
     </div>
   </div>
@@ -109,25 +150,29 @@ func generateHTML(report Report) string {
         </tr>
       </thead>
       <tbody>
-`, report.StartTime.Format("2006-01-02 15:04:05"),
-		report.EndTime.Format("2006-01-02 15:04:05"),
-		report.Duration,
-		report.Hostname)
-
-	for _, s := range report.Summaries {
-		html += fmt.Sprintf(`<tr>
-<td>%s</td>
-<td>%s</td>
-<td><a href="%s" target="_blank">%s</a></td>
-<td>%d</td>
-<td>%d</td>
-<td>%d</td>
-<td><a href="%s" target="_blank">%s</a></td>
-</tr>
-`, s.Repo, s.Result, s.SrcWebURL, s.SrcWebURL, s.NumBranches, s.NumTags, s.Size, s.DstWebURL, s.DstWebURL)
-	}
-
-	html += `
+        {{ range .Summaries }}
+        <tr>
+          <td>{{ .Repo }}</td>
+          <td>{{ .Result }}</td>
+          <td><a href="{{ .SrcWebURL }}" target="_blank">{{ .SrcWebURL }}</a></td>
+          <td>
+            {{ if .BranchNames }}
+              <ul class="mb-0">
+                {{ range .BranchNames }}<li>{{ . }}</li>{{ end }}
+              </ul>
+            {{ else }}-{{ end }}
+          </td>
+          <td>
+            {{ if .TagNames }}
+              <ul class="mb-0">
+                {{ range .TagNames }}<li>{{ . }}</li>{{ end }}
+              </ul>
+            {{ else }}-{{ end }}
+          </td>
+          <td>{{ .Size }}</td>
+          <td><a href="{{ .DstWebURL }}" target="_blank">{{ .DstWebURL }}</a></td>
+        </tr>
+        {{ end }}
       </tbody>
     </table>
   </div>
@@ -135,7 +180,15 @@ func generateHTML(report Report) string {
 </body>
 </html>
 `
-	return html
+	tmpl, err := template.New("report").Parse(tpl)
+	if err != nil {
+		return fmt.Sprintf("Errore template HTML: %v", err)
+	}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, report); err != nil {
+		return fmt.Sprintf("Errore rendering HTML: %v", err)
+	}
+	return buf.String()
 }
 
 // printSummary stampa una tabella di riepilogo con larghezze dinamiche per colonne,
