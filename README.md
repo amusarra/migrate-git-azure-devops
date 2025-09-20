@@ -238,6 +238,74 @@ CI (GitHub Actions)
 - GoReleaser in modalità snapshot carica gli artefatti come artifact di workflow.
 - La release completa (senza --snapshot) genera changelog e pubblica gli artefatti (vedi `.github/workflows/release.yml`).
 
+## Funzionalità Report Migrazione
+
+Il tool può generare un report dettagliato della migrazione in formato **JSON** e/o **HTML**. Questa funzionalità è utile per audit, troubleshooting e documentazione delle attività svolte.
+
+> Questa funzionalità è disponibile dalla versione 1.1.0
+
+### Come abilitare il report
+
+Aggiungi il flag `--report-format` per scegliere uno o più formati (es. `--report-format json,html`).  
+Specifica la directory di destinazione con `--report-path` (deve esistere), altrimenti il report viene salvato nella directory temporanea di sistema.
+
+Esempio:
+
+```bash
+migrazione-git-azure-devops ... --report-format html,json --report-path /percorso/dove/salvare
+```
+
+### Informazioni contenute nel report
+
+Il report include:
+
+- Data e ora di inizio e fine migrazione
+- Durata totale (in minuti)
+- Hostname della macchina da cui è stata eseguita la migrazione
+- Elenco dettagliato dei repository migrati con:
+  - Nome repository
+  - Esito (OK, errore, skipped, dry-run)
+  - URL sorgente e destinazione
+  - Numero e nomi dei branch migrati
+  - Numero e nomi dei tag migrati
+  - Dimensione del repository in byte
+
+A seguire un esempio di output HTML.
+
+![screenshot-report-html](docs/resources/images/report_html_example.jpg)
+
+A seguire un esempio di output JSON.
+
+```json
+{
+  "StartTime": "2024-06-01T10:00:00Z",
+  "EndTime": "2024-06-01T10:05:12Z",
+  "Duration": 5.2,
+  "Hostname": "myhost.local",
+  "Summaries": [
+    {
+      "Repo": "horse-core",
+      "Result": "OK",
+      "DstWebURL": "https://dev.azure.com/org/proj/_git/horse-core",
+      "SrcWebURL": "https://dev.azure.com/org/proj/_git/horse-core",
+      "NumBranches": 3,
+      "BranchNames": ["main", "develop", "feature-x"],
+      "NumTags": 2,
+      "TagNames": ["v1.0.0", "v1.1.0"],
+      "Size": 1234567
+      // ...altri campi...
+    }
+    // ...
+  ]
+}
+```
+
+### Note
+
+- Il nome del file report contiene un timestamp per garantire unicità.
+- Se la directory specificata con `--report-path` non esiste, il tool mostra un errore.
+- È possibile generare entrambi i formati contemporaneamente.
+
 ## Note e consigli
 
 - PAT:

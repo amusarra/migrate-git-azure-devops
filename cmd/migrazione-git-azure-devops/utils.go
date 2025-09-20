@@ -1,11 +1,238 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+	"text/template"
+	"time"
 )
+
+// Variabili di versione impostate da ldflags (-X main.version, etc.)
+var (
+	version = "dev"
+	commit  = "none"
+	date    = ""
+)
+
+// prog restituisce il basename dell’eseguibile in esecuzione.
+func prog() string {
+	return filepath.Base(os.Args[0])
+}
+
+func printVersion() {
+	fmt.Printf("%s %s\ncommit: %s\nbuilt:  %s\n", prog(), version, commit, date)
+}
+
+// runCmd esegue un comando di sistema propagando l’ambiente corrente ed eventualmente
+// aggiungendo variabili extra; inoltra stdout/stderr al processo chiamante.
+func runCmd(ctx context.Context, env []string, name string, args ...string) error {
+	cmd := exec.CommandContext(ctx, name, args...)
+	if env != nil {
+		cmd.Env = append(os.Environ(), env...)
+	}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+// generateAndSaveReport genera e salva i report nei formati specificati.
+func generateAndSaveReport(report Report, cfg Config) error {
+	for _, format := range cfg.ReportFormats {
+		timestamp := time.Now().Format("20060102_150405")
+		filename := "migration_report_" + timestamp + "." + format
+		reportPath := filepath.Join(cfg.ReportPath, filename)
+		fmt.Printf("Report (%s) salvato in: %s\n", format, reportPath)
+		if err := generateReport(report, format, reportPath); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// generateReport genera il report in JSON o HTML e lo salva nel percorso specificato.
+func generateReport(report Report, format, path string) error {
+	switch format {
+	case "json":
+		data, err := json.MarshalIndent(report, "", "  ")
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(path, data, 0644)
+	case "html":
+		html := generateHTML(report)
+		return os.WriteFile(path, []byte(html), 0644)
+	default:
+		return fmt.Errorf("formato report non supportato: %s", format)
+	}
+}
+
+const (
+	RefTypeBranches = "branches"
+	RefTypeTags     = "tags"
+)
+
+// getGitRefNames restituisce la lista dei nomi dei branch/tag.
+func getGitRefNames(repoDir, refType string) ([]string, error) {
+	var cmd *exec.Cmd
+	switch refType {
+	case RefTypeBranches:
+		cmd = exec.Command("git", "ls-remote", "--heads", "origin")
+	case RefTypeTags:
+		cmd = exec.Command("git", "tag")
+	default:
+		return nil, fmt.Errorf("refType non supportato: %s", refType)
+	}
+	cmd.Dir = repoDir
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Errore comando git %s in %s: %v\n", refType, repoDir, err)
+		return nil, err
+	}
+	var names []string
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if refType == RefTypeBranches {
+		for _, line := range lines {
+			parts := strings.Fields(line)
+			if len(parts) == 2 {
+				ref := parts[1]
+				if strings.HasPrefix(ref, "refs/heads/") {
+					names = append(names, strings.TrimPrefix(ref, "refs/heads/"))
+				}
+			}
+		}
+	} else {
+		for _, tag := range lines {
+			if tag != "" {
+				names = append(names, tag)
+			}
+		}
+	}
+	return names, nil
+}
+
+// generateHTML genera una rappresentazione HTML del report come tabella, usando Bootstrap e il motore di template.
+func generateHTML(report Report) string {
+	const tpl = `<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Migration Report</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-4">
+  <h1 class="mb-4">Migration Report</h1>
+  <div class="row mb-3">
+    <div class="col-md-6">
+      <ul class="list-group">
+        <li class="list-group-item"><strong>Start Time:</strong> {{ .StartTime.Format "2006-01-02 15:04:05" }}</li>
+        <li class="list-group-item"><strong>End Time:</strong> {{ .EndTime.Format "2006-01-02 15:04:05" }}</li>
+        <li class="list-group-item"><strong>Duration:</strong> {{ printf "%.2f" .Duration }} minutes</li>
+        <li class="list-group-item"><strong>Hostname:</strong> {{ .Hostname }}</li>
+      </ul>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-bordered table-hover align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>Repository</th>
+          <th>Result</th>
+          <th>Source URL</th>
+          <th>Branches</th>
+          <th>Tags</th>
+          <th>Size (bytes)</th>
+          <th>Destination URL</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range .Summaries }}
+        <tr>
+          <td>{{ .Repo }}</td>
+          <td>{{ .Result }}</td>
+          <td><a href="{{ .SrcWebURL }}" target="_blank">{{ .SrcWebURL }}</a></td>
+          <td>
+            {{ if .BranchNames }}
+              <ul class="mb-0">
+                {{ range .BranchNames }}<li>{{ . }}</li>{{ end }}
+              </ul>
+            {{ else }}-{{ end }}
+          </td>
+          <td>
+            {{ if .TagNames }}
+              <ul class="mb-0">
+                {{ range .TagNames }}<li>{{ . }}</li>{{ end }}
+              </ul>
+            {{ else }}-{{ end }}
+          </td>
+          <td>{{ .Size }}</td>
+          <td><a href="{{ .DstWebURL }}" target="_blank">{{ .DstWebURL }}</a></td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>
+`
+	tmpl, err := template.New("report").Parse(tpl)
+	if err != nil {
+		return fmt.Sprintf("Errore template HTML: %v", err)
+	}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, report); err != nil {
+		return fmt.Sprintf("Errore rendering HTML: %v", err)
+	}
+	return buf.String()
+}
+
+// printSummary stampa una tabella di riepilogo con larghezze dinamiche per colonne,
+// mostrando repository, esito e URL web di destinazione.
+func printSummary(results []Summary) {
+	headers := []string{"Repository", "Esito", "Azure URL"}
+	// Calcola larghezze massime
+	repoCol, esitoCol, azureCol := len(headers[0]), len(headers[1]), len(headers[2])
+	for _, s := range results {
+		if len(s.Repo) > repoCol {
+			repoCol = len(s.Repo)
+		}
+		if len(s.Result) > esitoCol {
+			esitoCol = len(s.Result)
+		}
+		if len(s.DstWebURL) > azureCol {
+			azureCol = len(s.DstWebURL)
+		}
+	}
+	sep := "+" + strings.Repeat("-", repoCol+2) +
+		"+" + strings.Repeat("-", esitoCol+2) +
+		"+" + strings.Repeat("-", azureCol+2) + "+"
+
+	fmt.Println("===== RIEPILOGO MIGRAZIONE =====")
+	fmt.Println(sep)
+	fmt.Printf("| %-*s | %-*s | %-*s |\n",
+		repoCol, headers[0],
+		esitoCol, headers[1],
+		azureCol, headers[2])
+	fmt.Println(sep)
+	for _, s := range results {
+		fmt.Printf("| %-*s | %-*s | %-*s |\n",
+			repoCol, s.Repo,
+			esitoCol, s.Result,
+			azureCol, s.DstWebURL)
+	}
+	fmt.Println(sep)
+	fmt.Println(strings.Repeat("=", 32))
+}
 
 // parseElement analizza un singolo elemento (numero o intervallo) e aggiunge
 // gli indici zero-based al set seen e alla slice out.
@@ -51,13 +278,28 @@ func parseSelection(sel string, max int) ([]int, error) {
 	var out []int
 	parts := strings.Split(sel, ",")
 	seen := map[int]bool{}
-	
+
 	for _, p := range parts {
 		if err := parseElement(p, max, seen, &out); err != nil {
 			return nil, err
 		}
 	}
-	
+
 	sort.Ints(out)
 	return out, nil
+}
+
+// dirSize calcola la dimensione totale di una directory in byte.
+func dirSize(path string) (int64, error) {
+	var size int64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return nil
+	})
+	return size, err
 }

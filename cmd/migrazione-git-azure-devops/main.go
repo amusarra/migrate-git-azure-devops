@@ -9,19 +9,11 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 	"time"
-)
-
-// Variabili di versione impostate da ldflags (-X main.version, etc.)
-var (
-	version = "dev"
-	commit  = "none"
-	date    = ""
 )
 
 const (
@@ -58,31 +50,40 @@ type Config struct {
 	SrcPAT      string
 	DstPAT      string
 	ShowVersion bool
+
+	ReportFormats []string // Formati del report: json, html, etc.
+	ReportPath    string   // Percorso base per salvare il report
 }
 
 // Summary riassume l’esito della migrazione per un singolo repository.
 type Summary struct {
-	Repo       string
-	Action     string
-	Result     string
-	DstWebURL  string
-	DstClone   string
-	Skipped    bool
-	ErrDetails string
+	Repo        string
+	Action      string
+	Result      string
+	DstWebURL   string
+	SrcWebURL   string // URL del repository sorgente
+	DstClone    string
+	Skipped     bool
+	ErrDetails  string
+	NumBranches int      // Numero di branch remoti
+	NumTags     int      // Numero di tag
+	Size        int64    // Dimensione del repository in byte
+	BranchNames []string // Nomi dei branch remoti
+	TagNames    []string // Nomi dei tag
+}
+
+// Report contiene le informazioni globali del report e i riepiloghi per repository.
+type Report struct {
+	StartTime time.Time
+	EndTime   time.Time
+	Duration  float64 // in minuti
+	Hostname  string
+	Summaries []Summary
 }
 
 // main è il punto di ingresso dell’applicazione: delega a Execute() definita in root.go.
 func main() {
 	Execute()
-}
-
-// prog restituisce il basename dell’eseguibile in esecuzione.
-func prog() string {
-	return filepath.Base(os.Args[0])
-}
-
-func printVersion() {
-	fmt.Printf("%s %s\ncommit: %s\nbuilt:  %s\n", prog(), version, commit, date)
 }
 
 // cmdListRepos elenca i repository nella sorgente e li stampa in output.
@@ -112,6 +113,9 @@ func cmdListRepos(cfg Config) error {
 // runWizard guida l’utente in una procedura interattiva di selezione e migrazione
 // dei repository, chiedendo conferma prima dell’esecuzione.
 func runWizard(cfg Config) error {
+	startTime := time.Now()
+	hostname, _ := os.Hostname()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
@@ -215,14 +219,33 @@ func runWizard(cfg Config) error {
 		fmt.Fprintln(os.Stderr, "Errore migrazione:", err)
 	}
 
+	endTime := time.Now()
+	duration := endTime.Sub(startTime).Minutes()
+
 	// 7) Report finale
 	printSummary(summary)
+	// Genera report se richiesto
+	if cfg.ReportFormats != nil {
+		report := Report{
+			StartTime: startTime,
+			EndTime:   endTime,
+			Duration:  duration,
+			Hostname:  hostname,
+			Summaries: summary,
+		}
+		if err := generateAndSaveReport(report, cfg); err != nil {
+			fmt.Fprintln(os.Stderr, "Errore generazione report:", err)
+		}
+	}
 	return nil
 }
 
 // runNonInteractive esegue la migrazione senza interazione, in base ai flag forniti.
 // Gestisce filtri, liste da file e il riepilogo finale.
 func runNonInteractive(cfg Config) error {
+	startTime := time.Now()
+	hostname, _ := os.Hostname()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
@@ -307,9 +330,25 @@ func runNonInteractive(cfg Config) error {
 		fmt.Fprintln(os.Stderr, "Errore migrazione:", err)
 	}
 
+	endTime := time.Now()
+	duration := endTime.Sub(startTime).Minutes()
+
 	// Riepilogo completo: errori per repo non trovati + risultati migrazione
 	all := append(preSummary, migSummary...)
 	printSummary(all)
+	// Genera report se richiesto
+	if cfg.ReportFormats != nil {
+		report := Report{
+			StartTime: startTime,
+			EndTime:   endTime,
+			Duration:  duration,
+			Hostname:  hostname,
+			Summaries: all,
+		}
+		if err := generateAndSaveReport(report, cfg); err != nil {
+			fmt.Fprintln(os.Stderr, "Errore generazione report:", err)
+		}
+	}
 	return nil
 }
 
@@ -332,7 +371,7 @@ func migrateRepos(ctx context.Context, cfg Config, repos []Repo, dstExists map[s
 	var results []Summary
 	for i, r := range repos {
 		fmt.Printf("[%d/%d] %s\n", i+1, len(repos), r.Name)
-		sum := Summary{Repo: r.Name}
+		sum := Summary{Repo: r.Name, SrcWebURL: r.WebURL}
 
 		repoEnc := url.PathEscape(r.Name)
 		srcProjectEnc := url.PathEscape(cfg.SrcProject)
@@ -375,6 +414,18 @@ func migrateRepos(ctx context.Context, cfg Config, repos []Repo, dstExists map[s
 				fmt.Println("  Errore: repository sorgente non trovato o accesso negato")
 				results = append(results, sum)
 				continue
+			}
+			// Ottieni nomi branch/tag e conta con len() per evitare doppia esecuzione git
+			if branchNames, err := getGitRefNames(repodir, RefTypeBranches); err == nil {
+				sum.BranchNames = branchNames
+				sum.NumBranches = len(branchNames)
+			}
+			if tagNames, err := getGitRefNames(repodir, RefTypeTags); err == nil {
+				sum.TagNames = tagNames
+				sum.NumTags = len(tagNames)
+			}
+			if size, err := dirSize(repodir); err == nil {
+				sum.Size = size
 			}
 		}
 
@@ -428,54 +479,4 @@ func migrateRepos(ctx context.Context, cfg Config, repos []Repo, dstExists map[s
 		fmt.Println()
 	}
 	return results, nil
-}
-
-// printSummary stampa una tabella di riepilogo con larghezze dinamiche per colonne,
-// mostrando repository, esito e URL web di destinazione.
-func printSummary(results []Summary) {
-	headers := []string{"Repository", "Esito", "Azure URL"}
-	// Calcola larghezze massime
-	repoCol, esitoCol, azureCol := len(headers[0]), len(headers[1]), len(headers[2])
-	for _, s := range results {
-		if len(s.Repo) > repoCol {
-			repoCol = len(s.Repo)
-		}
-		if len(s.Result) > esitoCol {
-			esitoCol = len(s.Result)
-		}
-		if len(s.DstWebURL) > azureCol {
-			azureCol = len(s.DstWebURL)
-		}
-	}
-	sep := "+" + strings.Repeat("-", repoCol+2) +
-		"+" + strings.Repeat("-", esitoCol+2) +
-		"+" + strings.Repeat("-", azureCol+2) + "+"
-
-	fmt.Println("===== RIEPILOGO MIGRAZIONE =====")
-	fmt.Println(sep)
-	fmt.Printf("| %-*s | %-*s | %-*s |\n",
-		repoCol, headers[0],
-		esitoCol, headers[1],
-		azureCol, headers[2])
-	fmt.Println(sep)
-	for _, s := range results {
-		fmt.Printf("| %-*s | %-*s | %-*s |\n",
-			repoCol, s.Repo,
-			esitoCol, s.Result,
-			azureCol, s.DstWebURL)
-	}
-	fmt.Println(sep)
-	fmt.Println(strings.Repeat("=", 32))
-}
-
-// runCmd esegue un comando di sistema propagando l’ambiente corrente ed eventualmente
-// aggiungendo variabili extra; inoltra stdout/stderr al processo chiamante.
-func runCmd(ctx context.Context, env []string, name string, args ...string) error {
-	cmd := exec.CommandContext(ctx, name, args...)
-	if env != nil {
-		cmd.Env = append(os.Environ(), env...)
-	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
 }
