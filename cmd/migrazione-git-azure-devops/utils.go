@@ -303,12 +303,3 @@ func dirSize(path string) (int64, error) {
 	})
 	return size, err
 }
-
-// countGitRefs conta il numero di riferimenti Git (es. branch o tag) in una directory repository.
-func countGitRefs(repoDir, refType string) (int, error) {
-	names, err := getGitRefNames(repoDir, refType)
-	if err != nil {
-		return 0, err
-	}
-	return len(names), nil
-}
