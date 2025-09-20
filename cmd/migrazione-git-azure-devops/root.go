@@ -88,6 +88,17 @@ func Execute() {
 				}
 			}
 
+			// Validazione report-path
+			if len(cfg.ReportFormats) > 0 {
+				if cfg.ReportPath == "" {
+					cfg.ReportPath = os.TempDir()
+				} else {
+					if info, err := os.Stat(cfg.ReportPath); err != nil || !info.IsDir() {
+						return fmt.Errorf("--report-path deve essere una directory esistente: %s", cfg.ReportPath)
+					}
+				}
+			}
+
 			// Dispatch
 			if cfg.ListOnly {
 				return cmdListRepos(cfg)
@@ -113,7 +124,7 @@ func Execute() {
 	rootCmd.Flags().BoolVarP(&cfg.Wizard, "wizard", "w", false, "Avvia la procedura guidata interattiva")
 	rootCmd.Flags().BoolVarP(&cfg.ShowVersion, "version", "v", false, "Mostra la versione del programma")
 	rootCmd.Flags().StringSliceVar(&cfg.ReportFormats, "report-format", []string{}, "Formati del report di migrazione (json, html), separati da virgola")
-	rootCmd.Flags().StringVar(&cfg.ReportPath, "report-path", "", "Percorso base dove salvare il report (default: directory temporanea di sistema)")
+	rootCmd.Flags().StringVar(&cfg.ReportPath, "report-path", "", "Percorso directory dove salvare il report (default: directory temporanea di sistema)")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "Errore:", err)

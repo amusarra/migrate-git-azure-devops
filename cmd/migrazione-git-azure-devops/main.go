@@ -6,23 +6,14 @@ package main
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 	"time"
-)
-
-// Variabili di versione impostate da ldflags (-X main.version, etc.)
-var (
-	version = "dev"
-	commit  = "none"
-	date    = ""
 )
 
 const (
@@ -79,18 +70,18 @@ type Summary struct {
 	Size        int64 // Dimensione del repository in byte
 }
 
+// Report contiene le informazioni globali del report e i riepiloghi per repository.
+type Report struct {
+	StartTime time.Time
+	EndTime   time.Time
+	Duration  float64 // in minuti
+	Hostname  string
+	Summaries []Summary
+}
+
 // main è il punto di ingresso dell’applicazione: delega a Execute() definita in root.go.
 func main() {
 	Execute()
-}
-
-// prog restituisce il basename dell’eseguibile in esecuzione.
-func prog() string {
-	return filepath.Base(os.Args[0])
-}
-
-func printVersion() {
-	fmt.Printf("%s %s\ncommit: %s\nbuilt:  %s\n", prog(), version, commit, date)
 }
 
 // cmdListRepos elenca i repository nella sorgente e li stampa in output.
@@ -120,6 +111,9 @@ func cmdListRepos(cfg Config) error {
 // runWizard guida l’utente in una procedura interattiva di selezione e migrazione
 // dei repository, chiedendo conferma prima dell’esecuzione.
 func runWizard(cfg Config) error {
+	startTime := time.Now()
+	hostname, _ := os.Hostname()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
@@ -223,11 +217,21 @@ func runWizard(cfg Config) error {
 		fmt.Fprintln(os.Stderr, "Errore migrazione:", err)
 	}
 
+	endTime := time.Now()
+	duration := endTime.Sub(startTime).Minutes()
+
 	// 7) Report finale
 	printSummary(summary)
 	// Genera report se richiesto
 	if cfg.ReportFormats != nil {
-		if err := generateAndSaveReport(summary, cfg); err != nil {
+		report := Report{
+			StartTime: startTime,
+			EndTime:   endTime,
+			Duration:  duration,
+			Hostname:  hostname,
+			Summaries: summary,
+		}
+		if err := generateAndSaveReport(report, cfg); err != nil {
 			fmt.Fprintln(os.Stderr, "Errore generazione report:", err)
 		}
 	}
@@ -237,6 +241,9 @@ func runWizard(cfg Config) error {
 // runNonInteractive esegue la migrazione senza interazione, in base ai flag forniti.
 // Gestisce filtri, liste da file e il riepilogo finale.
 func runNonInteractive(cfg Config) error {
+	startTime := time.Now()
+	hostname, _ := os.Hostname()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
@@ -321,12 +328,22 @@ func runNonInteractive(cfg Config) error {
 		fmt.Fprintln(os.Stderr, "Errore migrazione:", err)
 	}
 
+	endTime := time.Now()
+	duration := endTime.Sub(startTime).Minutes()
+
 	// Riepilogo completo: errori per repo non trovati + risultati migrazione
 	all := append(preSummary, migSummary...)
 	printSummary(all)
 	// Genera report se richiesto
 	if cfg.ReportFormats != nil {
-		if err := generateAndSaveReport(all, cfg); err != nil {
+		report := Report{
+			StartTime: startTime,
+			EndTime:   endTime,
+			Duration:  duration,
+			Hostname:  hostname,
+			Summaries: all,
+		}
+		if err := generateAndSaveReport(report, cfg); err != nil {
 			fmt.Fprintln(os.Stderr, "Errore generazione report:", err)
 		}
 	}
@@ -458,105 +475,4 @@ func migrateRepos(ctx context.Context, cfg Config, repos []Repo, dstExists map[s
 		fmt.Println()
 	}
 	return results, nil
-}
-
-// printSummary stampa una tabella di riepilogo con larghezze dinamiche per colonne,
-// mostrando repository, esito e URL web di destinazione.
-func printSummary(results []Summary) {
-	headers := []string{"Repository", "Esito", "Azure URL"}
-	// Calcola larghezze massime
-	repoCol, esitoCol, azureCol := len(headers[0]), len(headers[1]), len(headers[2])
-	for _, s := range results {
-		if len(s.Repo) > repoCol {
-			repoCol = len(s.Repo)
-		}
-		if len(s.Result) > esitoCol {
-			esitoCol = len(s.Result)
-		}
-		if len(s.DstWebURL) > azureCol {
-			azureCol = len(s.DstWebURL)
-		}
-	}
-	sep := "+" + strings.Repeat("-", repoCol+2) +
-		"+" + strings.Repeat("-", esitoCol+2) +
-		"+" + strings.Repeat("-", azureCol+2) + "+"
-
-	fmt.Println("===== RIEPILOGO MIGRAZIONE =====")
-	fmt.Println(sep)
-	fmt.Printf("| %-*s | %-*s | %-*s |\n",
-		repoCol, headers[0],
-		esitoCol, headers[1],
-		azureCol, headers[2])
-	fmt.Println(sep)
-	for _, s := range results {
-		fmt.Printf("| %-*s | %-*s | %-*s |\n",
-			repoCol, s.Repo,
-			esitoCol, s.Result,
-			azureCol, s.DstWebURL)
-	}
-	fmt.Println(sep)
-	fmt.Println(strings.Repeat("=", 32))
-}
-
-// runCmd esegue un comando di sistema propagando l’ambiente corrente ed eventualmente
-// aggiungendo variabili extra; inoltra stdout/stderr al processo chiamante.
-func runCmd(ctx context.Context, env []string, name string, args ...string) error {
-	cmd := exec.CommandContext(ctx, name, args...)
-	if env != nil {
-		cmd.Env = append(os.Environ(), env...)
-	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
-// generateAndSaveReport genera e salva i report nei formati specificati.
-func generateAndSaveReport(summaries []Summary, cfg Config) error {
-	for _, format := range cfg.ReportFormats {
-		reportPath := cfg.ReportPath
-		if reportPath == "" {
-			reportPath = filepath.Join(os.TempDir(), "migration_report."+format)
-		} else {
-			// Se path specificato, aggiungi estensione se non presente
-			if !strings.HasSuffix(reportPath, "."+format) {
-				reportPath += "." + format
-			}
-		}
-		fmt.Printf("Report (%s) salvato in: %s\n", format, reportPath)
-		if err := generateReport(summaries, format, reportPath); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// generateReport genera il report in JSON o HTML e lo salva nel percorso specificato.
-func generateReport(summaries []Summary, format, path string) error {
-	switch format {
-	case "json":
-		data, err := json.MarshalIndent(summaries, "", "  ")
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(path, data, 0644)
-	case "html":
-		html := generateHTML(summaries)
-		return os.WriteFile(path, []byte(html), 0644)
-	default:
-		return fmt.Errorf("formato report non supportato: %s", format)
-	}
-}
-
-// generateHTML genera una rappresentazione HTML del report come tabella.
-func generateHTML(summaries []Summary) string {
-	html := `<html><head><title>Migration Report</title></head><body>
-<h1>Migration Report</h1>
-<table border="1">
-<tr><th>Repository</th><th>Result</th><th>Source URL</th><th>Branches</th><th>Tags</th><th>Size (bytes)</th><th>Destination URL</th></tr>`
-	for _, s := range summaries {
-		html += fmt.Sprintf("<tr><td>%s</td><td>%s</td><td><a href='%s'>%s</a></td><td>%d</td><td>%d</td><td>%d</td><td><a href='%s'>%s</a></td></tr>",
-			s.Repo, s.Result, s.SrcWebURL, s.SrcWebURL, s.NumBranches, s.NumTags, s.Size, s.DstWebURL, s.DstWebURL)
-	}
-	html += "</table></body></html>"
-	return html
 }
