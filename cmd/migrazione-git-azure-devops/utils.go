@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -51,13 +54,50 @@ func parseSelection(sel string, max int) ([]int, error) {
 	var out []int
 	parts := strings.Split(sel, ",")
 	seen := map[int]bool{}
-	
+
 	for _, p := range parts {
 		if err := parseElement(p, max, seen, &out); err != nil {
 			return nil, err
 		}
 	}
-	
+
 	sort.Ints(out)
 	return out, nil
+}
+
+// dirSize calcola la dimensione totale di una directory in byte.
+func dirSize(path string) (int64, error) {
+	var size int64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return nil
+	})
+	return size, err
+}
+
+// countGitRefs conta il numero di riferimenti Git (es. branch o tag) in una directory repository.
+func countGitRefs(repoDir, refType string) (int, error) {
+	var cmd *exec.Cmd
+	if refType == "branch -r" {
+		// Usa ls-remote per contare branch remoti in modo più affidabile
+		cmd = exec.Command("git", "ls-remote", "--heads", "origin")
+	} else {
+		cmd = exec.Command("git", refType)
+	}
+	cmd.Dir = repoDir
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Errore comando git %s in %s: %v\n", refType, repoDir, err)
+		return 0, err
+	}
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) == 1 && lines[0] == "" {
+		return 0, nil
+	}
+	return len(lines), nil
 }

@@ -6,6 +6,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -58,17 +59,24 @@ type Config struct {
 	SrcPAT      string
 	DstPAT      string
 	ShowVersion bool
+
+	ReportFormats []string // Formati del report: json, html, etc.
+	ReportPath    string   // Percorso base per salvare il report
 }
 
 // Summary riassume l’esito della migrazione per un singolo repository.
 type Summary struct {
-	Repo       string
-	Action     string
-	Result     string
-	DstWebURL  string
-	DstClone   string
-	Skipped    bool
-	ErrDetails string
+	Repo        string
+	Action      string
+	Result      string
+	DstWebURL   string
+	SrcWebURL   string // URL del repository sorgente
+	DstClone    string
+	Skipped     bool
+	ErrDetails  string
+	NumBranches int   // Numero di branch remoti
+	NumTags     int   // Numero di tag
+	Size        int64 // Dimensione del repository in byte
 }
 
 // main è il punto di ingresso dell’applicazione: delega a Execute() definita in root.go.
@@ -217,6 +225,12 @@ func runWizard(cfg Config) error {
 
 	// 7) Report finale
 	printSummary(summary)
+	// Genera report se richiesto
+	if cfg.ReportFormats != nil {
+		if err := generateAndSaveReport(summary, cfg); err != nil {
+			fmt.Fprintln(os.Stderr, "Errore generazione report:", err)
+		}
+	}
 	return nil
 }
 
@@ -310,6 +324,12 @@ func runNonInteractive(cfg Config) error {
 	// Riepilogo completo: errori per repo non trovati + risultati migrazione
 	all := append(preSummary, migSummary...)
 	printSummary(all)
+	// Genera report se richiesto
+	if cfg.ReportFormats != nil {
+		if err := generateAndSaveReport(all, cfg); err != nil {
+			fmt.Fprintln(os.Stderr, "Errore generazione report:", err)
+		}
+	}
 	return nil
 }
 
@@ -332,7 +352,7 @@ func migrateRepos(ctx context.Context, cfg Config, repos []Repo, dstExists map[s
 	var results []Summary
 	for i, r := range repos {
 		fmt.Printf("[%d/%d] %s\n", i+1, len(repos), r.Name)
-		sum := Summary{Repo: r.Name}
+		sum := Summary{Repo: r.Name, SrcWebURL: r.WebURL}
 
 		repoEnc := url.PathEscape(r.Name)
 		srcProjectEnc := url.PathEscape(cfg.SrcProject)
@@ -375,6 +395,16 @@ func migrateRepos(ctx context.Context, cfg Config, repos []Repo, dstExists map[s
 				fmt.Println("  Errore: repository sorgente non trovato o accesso negato")
 				results = append(results, sum)
 				continue
+			}
+			// Calcola numero di branch, tag e dimensione dopo il clone
+			if numBranches, err := countGitRefs(repodir, "branch -r"); err == nil {
+				sum.NumBranches = numBranches
+			}
+			if numTags, err := countGitRefs(repodir, "tag"); err == nil {
+				sum.NumTags = numTags
+			}
+			if size, err := dirSize(repodir); err == nil {
+				sum.Size = size
 			}
 		}
 
@@ -478,4 +508,55 @@ func runCmd(ctx context.Context, env []string, name string, args ...string) erro
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+// generateAndSaveReport genera e salva i report nei formati specificati.
+func generateAndSaveReport(summaries []Summary, cfg Config) error {
+	for _, format := range cfg.ReportFormats {
+		reportPath := cfg.ReportPath
+		if reportPath == "" {
+			reportPath = filepath.Join(os.TempDir(), "migration_report."+format)
+		} else {
+			// Se path specificato, aggiungi estensione se non presente
+			if !strings.HasSuffix(reportPath, "."+format) {
+				reportPath += "." + format
+			}
+		}
+		fmt.Printf("Report (%s) salvato in: %s\n", format, reportPath)
+		if err := generateReport(summaries, format, reportPath); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// generateReport genera il report in JSON o HTML e lo salva nel percorso specificato.
+func generateReport(summaries []Summary, format, path string) error {
+	switch format {
+	case "json":
+		data, err := json.MarshalIndent(summaries, "", "  ")
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(path, data, 0644)
+	case "html":
+		html := generateHTML(summaries)
+		return os.WriteFile(path, []byte(html), 0644)
+	default:
+		return fmt.Errorf("formato report non supportato: %s", format)
+	}
+}
+
+// generateHTML genera una rappresentazione HTML del report come tabella.
+func generateHTML(summaries []Summary) string {
+	html := `<html><head><title>Migration Report</title></head><body>
+<h1>Migration Report</h1>
+<table border="1">
+<tr><th>Repository</th><th>Result</th><th>Source URL</th><th>Branches</th><th>Tags</th><th>Size (bytes)</th><th>Destination URL</th></tr>`
+	for _, s := range summaries {
+		html += fmt.Sprintf("<tr><td>%s</td><td>%s</td><td><a href='%s'>%s</a></td><td>%d</td><td>%d</td><td>%d</td><td><a href='%s'>%s</a></td></tr>",
+			s.Repo, s.Result, s.SrcWebURL, s.SrcWebURL, s.NumBranches, s.NumTags, s.Size, s.DstWebURL, s.DstWebURL)
+	}
+	html += "</table></body></html>"
+	return html
 }

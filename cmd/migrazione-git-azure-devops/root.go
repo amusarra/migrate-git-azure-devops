@@ -112,6 +112,8 @@ func Execute() {
 	rootCmd.Flags().BoolVarP(&cfg.ListOnly, "list-repos", "l", false, "Elenca i repository sorgente e termina")
 	rootCmd.Flags().BoolVarP(&cfg.Wizard, "wizard", "w", false, "Avvia la procedura guidata interattiva")
 	rootCmd.Flags().BoolVarP(&cfg.ShowVersion, "version", "v", false, "Mostra la versione del programma")
+	rootCmd.Flags().StringSliceVar(&cfg.ReportFormats, "report-format", []string{}, "Formati del report di migrazione (json, html), separati da virgola")
+	rootCmd.Flags().StringVar(&cfg.ReportPath, "report-path", "", "Percorso base dove salvare il report (default: directory temporanea di sistema)")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "Errore:", err)
