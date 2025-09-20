@@ -74,13 +74,18 @@ func generateReport(report Report, format, path string) error {
 	}
 }
 
+const (
+	RefTypeBranches = "branches"
+	RefTypeTags     = "tags"
+)
+
 // getGitRefNames restituisce la lista dei nomi dei branch/tag.
 func getGitRefNames(repoDir, refType string) ([]string, error) {
 	var cmd *exec.Cmd
 	switch refType {
-	case "branch -r":
+	case RefTypeBranches:
 		cmd = exec.Command("git", "ls-remote", "--heads", "origin")
-	case "tag":
+	case RefTypeTags:
 		cmd = exec.Command("git", "tag")
 	default:
 		return nil, fmt.Errorf("refType non supportato: %s", refType)
@@ -93,7 +98,7 @@ func getGitRefNames(repoDir, refType string) ([]string, error) {
 	}
 	var names []string
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-	if refType == "branch -r" {
+	if refType == RefTypeBranches {
 		for _, line := range lines {
 			parts := strings.Fields(line)
 			if len(parts) == 2 {
@@ -302,11 +307,13 @@ func dirSize(path string) (int64, error) {
 // countGitRefs conta il numero di riferimenti Git (es. branch o tag) in una directory repository.
 func countGitRefs(repoDir, refType string) (int, error) {
 	var cmd *exec.Cmd
-	if refType == "branch -r" {
-		// Usa ls-remote per contare branch remoti in modo più affidabile
+	switch refType {
+	case RefTypeBranches:
 		cmd = exec.Command("git", "ls-remote", "--heads", "origin")
-	} else {
-		cmd = exec.Command("git", refType)
+	case RefTypeTags:
+		cmd = exec.Command("git", "tag")
+	default:
+		return 0, fmt.Errorf("refType non supportato: %s", refType)
 	}
 	cmd.Dir = repoDir
 	output, err := cmd.Output()
