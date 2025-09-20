@@ -415,18 +415,14 @@ func migrateRepos(ctx context.Context, cfg Config, repos []Repo, dstExists map[s
 				results = append(results, sum)
 				continue
 			}
-			// Calcola numero di branch, tag, nomi e dimensione dopo il clone
-			if numBranches, err := countGitRefs(repodir, RefTypeBranches); err == nil {
-				sum.NumBranches = numBranches
-			}
+			// Ottieni nomi branch/tag e conta con len() per evitare doppia esecuzione git
 			if branchNames, err := getGitRefNames(repodir, RefTypeBranches); err == nil {
 				sum.BranchNames = branchNames
-			}
-			if numTags, err := countGitRefs(repodir, RefTypeTags); err == nil {
-				sum.NumTags = numTags
+				sum.NumBranches = len(branchNames)
 			}
 			if tagNames, err := getGitRefNames(repodir, RefTypeTags); err == nil {
 				sum.TagNames = tagNames
+				sum.NumTags = len(tagNames)
 			}
 			if size, err := dirSize(repodir); err == nil {
 				sum.Size = size

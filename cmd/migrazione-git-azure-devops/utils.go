@@ -306,24 +306,9 @@ func dirSize(path string) (int64, error) {
 
 // countGitRefs conta il numero di riferimenti Git (es. branch o tag) in una directory repository.
 func countGitRefs(repoDir, refType string) (int, error) {
-	var cmd *exec.Cmd
-	switch refType {
-	case RefTypeBranches:
-		cmd = exec.Command("git", "ls-remote", "--heads", "origin")
-	case RefTypeTags:
-		cmd = exec.Command("git", "tag")
-	default:
-		return 0, fmt.Errorf("refType non supportato: %s", refType)
-	}
-	cmd.Dir = repoDir
-	output, err := cmd.Output()
+	names, err := getGitRefNames(repoDir, refType)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Errore comando git %s in %s: %v\n", refType, repoDir, err)
 		return 0, err
 	}
-	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-	if len(lines) == 1 && lines[0] == "" {
-		return 0, nil
-	}
-	return len(lines), nil
+	return len(names), nil
 }
