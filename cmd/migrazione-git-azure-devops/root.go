@@ -90,6 +90,13 @@ func Execute() {
 
 			// Validazione report-path
 			if len(cfg.ReportFormats) > 0 {
+				// Controllo formati supportati
+				supported := map[string]bool{"json": true, "html": true}
+				for _, f := range cfg.ReportFormats {
+					if !supported[strings.ToLower(f)] {
+						return fmt.Errorf("formato report non supportato: %s (sono ammessi solo json, html)", f)
+					}
+				}
 				if cfg.ReportPath == "" {
 					cfg.ReportPath = os.TempDir()
 				} else {
