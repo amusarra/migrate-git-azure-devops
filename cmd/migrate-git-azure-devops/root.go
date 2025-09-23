@@ -40,7 +40,11 @@ func Execute() {
 	rootCmd := &cobra.Command{
 		Use:   prog(),
 		Short: "Git repository migration between Azure DevOps projects/organizations",
-		Long:  "Migrates Git repositories between Azure DevOps projects/organizations with wizard or non-interactive mode, dry-run and mirror push.",
+		Long: "Migrates Git repositories between Azure DevOps projects/organizations with wizard or non-interactive mode, dry-run and mirror push." +
+			"\n\n" +
+			"Antonio Musarra <antonio.musarra@gmail.com>\n" +
+			"Blog: https://www.dontesta.it\n" +
+			"GitHub: https://github.com/amusarra",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Version
 			if cfg.ShowVersion {
