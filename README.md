@@ -1,7 +1,7 @@
 # Azure DevOps Git Repository Migration Tool between Projects/Organizations
 
 ![Go Build](https://github.com/amusarra/migrazione-git-azure-devops/actions/workflows/build.yml/badge.svg)
-![Go Release](https://github.com/amusarra/migrazione-git-azure-devops/actions/workflows/release.yml/badge.svg)
+![Go Release](https://github.com/amusarra/migrate-git-azure-devops/actions/workflows/release.yml/badge.svg)
 
 Go CLI to migrate Git repositories between Azure DevOps projects/organizations:
 
@@ -20,6 +20,8 @@ Credential requirements:
 Below is an example of the tool in action.
 
 [![asciicast](https://asciinema.org/a/741276.svg)](https://asciinema.org/a/741276?t=0:12)
+
+> Attention: from version 1.1.0-RC.4 the binary name has changed from `migrazione-git-azure-devops` to `migrate-git-azure-devops` (for consistency with the GitHub repository name).
 
 ## Quickstart
 
@@ -136,7 +138,7 @@ go install github.com/amusarra/migrate-git-azure-devops/cmd/migrate-git-azure-de
 Option B) Local build
 
 ```bash
-git clone https://github.com/amusarra/migrazione-git-azure-devops.git
+git clone https://github.com/amusarra/migrate-git-azure-devops.git
 cd migrate-git-azure-devops
 go build -o bin/migrate-git-azure-devops ./cmd/migrate-git-azure-devops
 ```
