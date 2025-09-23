@@ -85,7 +85,11 @@ func httpReq(ctx context.Context, method, org, project, path, pat string, body [
 	if err != nil {
 		return nil, 0, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Fprintln(os.Stderr, "Errore nella chiusura della risposta HTTP:", err)
+		}
+	}()
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
