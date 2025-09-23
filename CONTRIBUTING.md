@@ -22,15 +22,15 @@ Grazie per il tuo interesse! Questo documento spiega come proporre modifiche, ap
 
 ```bash
 git clone https://github.com/amusarra/migrazione-git-azure-devops.git
-cd migrazione-git-azure-devops
+cd migrate-git-azure-devops
 go mod tidy
 ```
 
 Build locale del tool:
 
 ```bash
-go build -o bin/migrazione-git-azure-devops ./cmd/migrazione-git-azure-devops
-./bin/migrazione-git-azure-devops --version
+go build -o bin/migrate-git-azure-devops ./cmd/migrate-git-azure-devops
+./bin/migrate-git-azure-devops --version
 ```
 
 Snapshot con GoReleaser (artefatti in dist/):

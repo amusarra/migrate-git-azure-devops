@@ -8,11 +8,11 @@
 
 version: 2
 
-project_name: migrazione-git-azure-devops
+project_name: migrate-git-azure-devops
 
 builds:
-  - id: migrazione-git-azure-devops
-    main: ./cmd/migrazione-git-azure-devops
+  - id: migrate-git-azure-devops
+    main: ./cmd/migrate-git-azure-devops
     binary: migrazione-git-azure-devops_{{ .Os }}_{{ .Arch }}
     no_unique_dist_dir: true
     env:
@@ -29,8 +29,8 @@ builds:
       - -X main.commit={{.Commit}}
       - -X main.date={{.Date}}
 
-  - id: migrazione-git-azure-devops-windows
-    main: ./cmd/migrazione-git-azure-devops
+  - id: migrate-git-azure-devops-windows
+    main: ./cmd/migrate-git-azure-devops
     binary: migrazione-git-azure-devops_{{ .Os }}_{{ .Arch }}
     no_unique_dist_dir: true
     env:
@@ -54,21 +54,21 @@ builds:
             -ver-minor {{.Minor}}
             -ver-patch {{.Patch}}
             -ver-build 0
-            -product-name "migrazione-git-azure-devops"
+            -product-name "migrate-git-azure-devops"
             -company "Antonio Musarra's Blog"
             -description "Migrazione repository Git tra progetti Azure DevOps"
             -copyright "Copyright (c) 2025 Antonio Musarra\'s Blog"
-            -icon ./cmd/migrazione-git-azure-devops/metadata/logo_32x32.ico
-            -o ./cmd/migrazione-git-azure-devops/versioninfo_windows.syso
-            ./cmd/migrazione-git-azure-devops/metadata/versioninfo.json
+            -icon ./cmd/migrate-git-azure-devops/metadata/logo_32x32.ico
+            -o ./cmd/migrate-git-azure-devops/versioninfo_windows.syso
+            ./cmd/migrate-git-azure-devops/metadata/versioninfo.json
       post:
-        - cmd: rm -f ./cmd/migrazione-git-azure-devops/versioninfo_windows.syso        
+        - cmd: rm -f ./cmd/migrate-git-azure-devops/versioninfo_windows.syso
 
 archives:
   - id: archive
     ids:
-      - migrazione-git-azure-devops
-      - migrazione-git-azure-devops-windows
+      - migrate-git-azure-devops
+      - migrate-git-azure-devops-windows
     formats: [tar.gz]
     files:
       - LICENSE
@@ -91,7 +91,7 @@ changelog:
 release:
   github:
     owner: amusarra
-    name: migrazione-git-azure-devops
+    name: migrate-git-azure-devops
   draft: false
   footer: >-
 

@@ -38,7 +38,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: migrazione-git-azure-devops-artifacts-${{ github.run_number }}
+          name: migrate-git-azure-devops-artifacts-${{ github.run_number }}
           path: dist/**
           if-no-files-found: error
           retention-days: 14

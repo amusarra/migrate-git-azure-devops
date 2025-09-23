@@ -33,22 +33,22 @@ Below is an example of the tool in action.
 - How to get the list of repositories in the source:
 
   ```bash
-  migrazione-git-azure-devops --src-org <src-org> --src-project <src-proj> --list-repos
+  migrate-git-azure-devops --src-org <src-org> --src-project <src-proj> --list-repos
 
   # abbreviations:
-  # migrazione-git-azure-devops -so <src-org> -sp <src-proj> --list-repos
+  # migrate-git-azure-devops -so <src-org> -sp <src-proj> --list-repos
   ```
 
 - How to start migration using the interactive wizard (recommended for first migration):
 
   ```bash
-  migrazione-git-azure-devops -so <src-org> -sp <src-proj> -do <dst-org> -dp <dst-proj> --wizard
+  migrate-git-azure-devops -so <src-org> -sp <src-proj> -do <dst-org> -dp <dst-proj> --wizard
   ```
 
 - How to start migration using non-interactive mode (regex):
 
   ```bash
-  migrazione-git-azure-devops -so <src-org> -sp <src-proj> \
+  migrate-git-azure-devops -so <src-org> -sp <src-proj> \
     -do <dst-org> -dp <dst-proj> \
     -f '^horse-.*$'
   ```
@@ -56,14 +56,14 @@ Below is an example of the tool in action.
 - How to run Dry-run (simulation, no changes):
 
   ```bash
-  migrazione-git-azure-devops -so <src-org> -sp <src-proj> -do <dst-org> -dp <dst-proj> \
+  migrate-git-azure-devops -so <src-org> -sp <src-proj> -do <dst-org> -dp <dst-proj> \
     -f '^horse-.*$' --dry-run
   ```
 
 - How to force push to repositories that already exist in the destination:
 
   ```bash
-  migrazione-git-azure-devops -so <src-org> -sp <src-proj> -do <dst-org> -dp <dst-proj> \
+  migrate-git-azure-devops -so <src-org> -sp <src-proj> -do <dst-org> -dp <dst-proj> \
     -f '^horse-.*$' --force-push
   ```
 
@@ -89,13 +89,13 @@ Examples:
 - List repos:
 
   ```bash
-  migrazione-git-azure-devops -so myorg -sp MyProject --list-repos
+  migrate-git-azure-devops -so myorg -sp MyProject --list-repos
   ```
 
 - Migration with regex:
   
   ```bash
-  migrazione-git-azure-devops -so srcorg -sp Src -do dstorg -dp Dst -f '^horse-(core|svc)-.*$'
+  migrate-git-azure-devops -so srcorg -sp Src -do dstorg -dp Dst -f '^horse-(core|svc)-.*$'
   ```
 
 - Migration from list file:
@@ -108,7 +108,7 @@ Examples:
   ```
 
   ```bash
-  migrazione-git-azure-devops -so srcorg -sp Src -do dstorg -dp Dst --repo-list repo.txt
+  migrate-git-azure-devops -so srcorg -sp Src -do dstorg -dp Dst --repo-list repo.txt
   ```
 
 Output and report:
@@ -129,16 +129,16 @@ Option A) From source (Go 1.22+)
 
 ```bash
 # Install via 'go install'
-# The binary will be $GOPATH/bin/migrazione-git-azure-devops
-go install github.com/amusarra/migrazione-git-azure-devops/cmd/migrazione-git-azure-devops@latest
+# The binary will be $GOPATH/bin/migrate-git-azure-devops
+go install github.com/amusarra/migrate-git-azure-devops/cmd/migrate-git-azure-devops@latest
 ```
 
 Option B) Local build
 
 ```bash
 git clone https://github.com/amusarra/migrazione-git-azure-devops.git
-cd migrazione-git-azure-devops
-go build -o bin/migrazione-git-azure-devops ./cmd/migrazione-git-azure-devops
+cd migrate-git-azure-devops
+go build -o bin/migrate-git-azure-devops ./cmd/migrate-git-azure-devops
 ```
 
 Option C) From release (precompiled binaries)
@@ -162,7 +162,7 @@ TMP="$(mktemp -d)"
 curl -L -o "$TMP/migrazione-git-azure-devops_linux_amd64.tar.gz" \
   "https://github.com/amusarra/migrazione-git-azure-devops/releases/download/x.y.z/migrazione-git-azure-devops_x.y.z_linux_amd64.tar.gz"
 tar -xzf "$TMP/migrazione-git-azure-devops_linux_amd64.tar.gz" -o -C "$TMP"
-sudo install -m 0755 "$TMP/migrazione-git-azure-devops_linux_amd64" /usr/local/bin/migrazione-git-azure-devops
+sudo install -m 0755 "$TMP/migrazione-git-azure-devops_linux_amd64" /usr/local/bin/migrate-git-azure-devops
 ```
 
 ```bash
@@ -171,7 +171,7 @@ TMP="$(mktemp -d)"
 curl -L -o "$TMP/migrazione-git-azure-devops_darwin_arm64.tar.gz" \
   "https://github.com/amusarra/migrazione-git-azure-devops/releases/download/x.y.z/migrazione-git-azure-devops_x.y.z_darwin_arm64.tar.gz"
 tar -xzf "$TMP/migrazione-git-azure-devops_darwin_arm64.tar.gz" -o -C "$TMP"
-sudo install -m 0755 "$TMP/migrazione-git-azure-devops_darwin_arm64" /usr/local/bin/migrazione-git-azure-devops
+sudo install -m 0755 "$TMP/migrazione-git-azure-devops_darwin_arm64" /usr/local/bin/migrate-git-azure-devops
 ```
 
 System installation on Windows (PowerShell, copy to $HOME).
@@ -190,13 +190,13 @@ After installation, verify the version:
 
 ```bash
 # Run on Unix-like (Linux, macOS)
-migrazione-git-azure-devops --version
+migrate-git-azure-devops --version
 
 # Run on Windows (PowerShell) from $HOME
 .\migrazione-git-azure-devops.exe --version
 
 # Example output:
-migrazione-git-azure-devops 1.0.0-RC.4
+migrate-git-azure-devops 1.0.0-RC.4
 commit: 19dd541501d82a0d6fc274a01538ee67db6ff8ee
 built:  2025-09-17T15:51:04Z
 ```
@@ -229,7 +229,7 @@ goreleaser release --clean --snapshot --skip=publish
 Native build
 
 ```bash
-go build -o bin/migrazione-git-azure-devops ./cmd/migrazione-git-azure-devops
+go build -o bin/migrate-git-azure-devops ./cmd/migrate-git-azure-devops
 ```
 
 CI (GitHub Actions)
@@ -252,7 +252,7 @@ Specify the destination directory with `--report-path` (must exist), otherwise t
 Example:
 
 ```bash
-migrazione-git-azure-devops ... --report-format html,json --report-path /path/to/save
+migrate-git-azure-devops ... --report-format html,json --report-path /path/to/save
 ```
 
 ### Information included in the report

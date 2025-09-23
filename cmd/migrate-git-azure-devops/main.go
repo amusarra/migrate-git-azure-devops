@@ -1,4 +1,4 @@
-// Command migrazione-git-azure-devops migrates Git repositories between Azure DevOps projects/organizations,
+// Command migrate-git-azure-devops migrates Git repositories between Azure DevOps projects/organizations,
 // with interactive (wizard) or non-interactive mode, dry-run support, filtering, and mirror push.
 // Credentials are read from SRC_PAT and DST_PAT environment variables.
 package main
