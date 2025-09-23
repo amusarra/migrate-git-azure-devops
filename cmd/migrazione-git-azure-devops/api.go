@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -9,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -44,8 +44,11 @@ func getRepos(ctx context.Context, org, project, pat string, trace bool) ([]Repo
 func createRepo(ctx context.Context, org, project, pat, name string, trace bool) error {
 	path := fmt.Sprintf("_apis/git/repositories?api-version=%s", apiVersion)
 	payload := map[string]string{"name": name}
-	b, _ := json.Marshal(payload)
-	body, code, err := httpReq(ctx, "POST", org, project, path, pat, b, trace)
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(payload); err != nil {
+		return fmt.Errorf("errore nella codifica del payload: %w", err)
+	}
+	body, code, err := httpReq(ctx, "POST", org, project, path, pat, buf.Bytes(), trace)
 	if err != nil {
 		return err
 	}
@@ -69,7 +72,7 @@ func httpReq(ctx context.Context, method, org, project, path, pat string, body [
 		fmt.Fprintln(os.Stderr, "[TRACE]", method, urlStr)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, urlStr, strings.NewReader(string(body)))
+	req, err := http.NewRequestWithContext(ctx, method, urlStr, bytes.NewReader(body))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -82,15 +85,23 @@ func httpReq(ctx context.Context, method, org, project, path, pat string, body [
 	if err != nil {
 		return nil, 0, err
 	}
-	if err != nil {
-		return nil, 0, err
-	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
 			fmt.Fprintln(os.Stderr, "Errore nella chiusura della risposta HTTP:", err)
 		}
 	}()
-	data, _ := io.ReadAll(resp.Body)
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, resp.StatusCode, fmt.Errorf("errore durante la lettura della risposta: %w", err)
+	}
+
+	// Azure DevOps risponde con 302 a una pagina di login invece di 401 se il PAT non è valido.
+	// Intercettiamo questo caso per fornire un errore più chiaro.
+	if resp.StatusCode == http.StatusFound { // 302
+		return data, http.StatusUnauthorized, fmt.Errorf("autenticazione fallita (ricevuto HTTP 302, probabile PAT non valido o scaduto)")
+	}
+
 	return data, resp.StatusCode, nil
 }
 
@@ -103,16 +114,16 @@ func basicAuth(pat string) string {
 // redactToken oscura eventuali credenziali presenti in un URL, utile per log/trace sicuri.
 func redactToken(s string) string {
 	if s == "" {
+		return ""
+	}
+	u, err := url.Parse(s)
+	if err != nil {
+		// Se il parsing fallisce, restituisce la stringa originale per non bloccare il logging
 		return s
 	}
-	if i := strings.Index(s, "://"); i >= 0 {
-		s = s[i+3:]
-		if j := strings.Index(s, "@"); j > 0 {
-			if k := strings.Index(s, ":"); k > 0 && k < j {
-				s = "https://user:***@" + s[j+1:]
-				return s
-			}
-		}
+	if u.User != nil {
+		u.User = url.UserPassword("user", "***")
+		return u.String()
 	}
 	return s
 }

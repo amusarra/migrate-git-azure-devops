@@ -296,7 +296,11 @@ A seguire un esempio di output JSON.
       // ...altri campi...
     }
     // ...
-  ]
+  ],
+  "ProgramName": "migrazione-git-azure-devops_darwin_arm64",
+  "Version": "1.1.0-RC.2-SNAPSHOT-77c0913",
+  "Commit": "77c0913783f61032286916860bda6996f7291474",
+  "BuildDate": "2025-09-23T12:12:06Z"
 }
 ```
 

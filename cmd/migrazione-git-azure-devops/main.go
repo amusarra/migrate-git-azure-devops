@@ -101,7 +101,7 @@ func cmdListRepos(cfg Config) error {
 		if cfg.Trace {
 			fmt.Fprintf(os.Stderr, "[TRACE] Dettagli errore: %v\n", err)
 		}
-		return err
+		os.Exit(1)
 	}
 	if len(repos) == 0 {
 		fmt.Printf("Nessun repository trovato in %s/%s\n", cfg.SrcOrg, cfg.SrcProject)
@@ -132,7 +132,7 @@ func runWizard(cfg Config) error {
 		if cfg.Trace {
 			fmt.Fprintf(os.Stderr, "[TRACE] Dettagli errore: %v\n", err)
 		}
-		return err
+		os.Exit(1)
 	}
 	if len(repos) == 0 {
 		return fmt.Errorf("nessun repository trovato in %s/%s", cfg.SrcOrg, cfg.SrcProject)
@@ -167,7 +167,7 @@ func runWizard(cfg Config) error {
 		if cfg.Trace {
 			fmt.Fprintf(os.Stderr, "[TRACE] Dettagli errore: %v\n", err)
 		}
-		return err
+		os.Exit(1)
 	}
 	exists := map[string]bool{}
 	for _, r := range dstRepos {
@@ -264,7 +264,7 @@ func runNonInteractive(cfg Config) error {
 		if cfg.Trace {
 			fmt.Fprintf(os.Stderr, "[TRACE] Dettagli errore: %v\n", err)
 		}
-		return err
+		os.Exit(1)
 	}
 
 	// costruisci set sorgente per lookup rapido
@@ -325,7 +325,7 @@ func runNonInteractive(cfg Config) error {
 		if cfg.Trace {
 			fmt.Fprintf(os.Stderr, "[TRACE] Dettagli errore: %v\n", err)
 		}
-		return err
+		os.Exit(1)
 	}
 	exists := map[string]bool{}
 	for _, r := range dstRepos {
