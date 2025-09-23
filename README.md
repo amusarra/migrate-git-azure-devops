@@ -143,14 +143,14 @@ go build -o bin/migrate-git-azure-devops ./cmd/migrate-git-azure-devops
 
 Option C) From release (precompiled binaries)
 
-- Go to the Release page: <https://github.com/amusarra/migrazione-git-azure-devops/releases>
+- Go to the Release page: <https://github.com/amusarra/migrate-git-azure-devops/releases>
 - Download the package for your platform (tar.gz or .zip)
-  - Linux AMD64: migrazione-git-azure-devops_x.y.z_linux_amd64.tar.gz
-  - Linux ARM64: migrazione-git-azure-devops_x.y.z_linux_arm64.tar.gz
-  - macOS Apple Silicon: migrazione-git-azure-devops_x.y.z_darwin_arm64.tar.gz
-  - macOS Intel: migrazione-git-azure-devops_x.y.z_darwin_amd64.tar.gz
-  - Windows AMD64: migrazione-git-azure-devops_x.y.z_windows_amd64.zip
-  - Windows ARM64: migrazione-git-azure-devops_x.y.z_windows_arm64.zip
+  - Linux AMD64: migrate-git-azure-devops_x.y.z_linux_amd64.tar.gz
+  - Linux ARM64: migrate-git-azure-devops_x.y.z_linux_arm64.tar.gz
+  - macOS Apple Silicon: migrate-git-azure-devops_x.y.z_darwin_arm64.tar.gz
+  - macOS Intel: migrate-git-azure-devops_x.y.z_darwin_amd64.tar.gz
+  - Windows AMD64: migrate-git-azure-devops_x.y.z_windows_amd64.zip
+  - Windows ARM64: migrate-git-azure-devops_x.y.z_windows_arm64.zip
 
 > In the commands below, replace `x.y.z` with the desired version (e.g. `1.0.0-RC.4`).
 
@@ -159,19 +159,19 @@ System installation on Unix-like environments (requires sudo and /usr/local/bin 
 ```bash
 # Linux AMD64
 TMP="$(mktemp -d)"
-curl -L -o "$TMP/migrazione-git-azure-devops_linux_amd64.tar.gz" \
-  "https://github.com/amusarra/migrazione-git-azure-devops/releases/download/x.y.z/migrazione-git-azure-devops_x.y.z_linux_amd64.tar.gz"
-tar -xzf "$TMP/migrazione-git-azure-devops_linux_amd64.tar.gz" -o -C "$TMP"
-sudo install -m 0755 "$TMP/migrazione-git-azure-devops_linux_amd64" /usr/local/bin/migrate-git-azure-devops
+curl -L -o "$TMP/migrate-git-azure-devops_linux_amd64.tar.gz" \
+  "https://github.com/amusarra/migrate-git-azure-devops/releases/download/x.y.z/migrate-git-azure-devops_x.y.z_linux_amd64.tar.gz"
+tar -xzf "$TMP/migrate-git-azure-devops_linux_amd64.tar.gz" -o -C "$TMP"
+sudo install -m 0755 "$TMP/migrate-git-azure-devops_linux_amd64" /usr/local/bin/migrate-git-azure-devops
 ```
 
 ```bash
 # macOS Apple Silicon (arm64)
 TMP="$(mktemp -d)"
-curl -L -o "$TMP/migrazione-git-azure-devops_darwin_arm64.tar.gz" \
-  "https://github.com/amusarra/migrazione-git-azure-devops/releases/download/x.y.z/migrazione-git-azure-devops_x.y.z_darwin_arm64.tar.gz"
-tar -xzf "$TMP/migrazione-git-azure-devops_darwin_arm64.tar.gz" -o -C "$TMP"
-sudo install -m 0755 "$TMP/migrazione-git-azure-devops_darwin_arm64" /usr/local/bin/migrate-git-azure-devops
+curl -L -o "$TMP/migrate-git-azure-devops_darwin_arm64.tar.gz" \
+  "https://github.com/amusarra/migrate-git-azure-devops/releases/download/x.y.z/migrate-git-azure-devops_x.y.z_darwin_arm64.tar.gz"
+tar -xzf "$TMP/migrate-git-azure-devops_darwin_arm64.tar.gz" -o -C "$TMP"
+sudo install -m 0755 "$TMP/migrate-git-azure-devops_darwin_arm64" /usr/local/bin/migrate-git-azure-devops
 ```
 
 System installation on Windows (PowerShell, copy to $HOME).
@@ -179,9 +179,9 @@ System installation on Windows (PowerShell, copy to $HOME).
 ```bash
 # Windows (PowerShell)
 $TMP = New-Item -ItemType Directory -Path (Join-Path $env:TEMP (New-Guid))
-Invoke-WebRequest -Uri "https://github.com/amusarra/migrazione-git-azure-devops/releases/download/x.y.z/migrazione-git-azure-devops_x.y.z_windows_amd64.zip" -OutFile "$TMP/migrazione-git-azure-devops.zip"
-Expand-Archive -Path "$TMP/migrazione-git-azure-devops.zip" -DestinationPath "$TMP"
-Copy-Item -Recurse -Force "$TMP/migrazione-git-azure-devops_windows_amd64.exe" "$HOME/migrazione-git-azure-devops.exe"
+Invoke-WebRequest -Uri "https://github.com/amusarra/migrate-git-azure-devops/releases/download/x.y.z/migrate-git-azure-devops_x.y.z_windows_amd64.zip" -OutFile "$TMP/migrate-git-azure-devops.zip"
+Expand-Archive -Path "$TMP/migrate-git-azure-devops.zip" -DestinationPath "$TMP"
+Copy-Item -Recurse -Force "$TMP/migrate-git-azure-devops_windows_amd64.exe" "$HOME/migrate-git-azure-devops.exe"
 ```
 
 Optional: verify checksum (download checksums.txt from the release and verify the hash).
@@ -193,7 +193,7 @@ After installation, verify the version:
 migrate-git-azure-devops --version
 
 # Run on Windows (PowerShell) from $HOME
-.\migrazione-git-azure-devops.exe --version
+.\migrate-git-azure-devops.exe --version
 
 # Example output:
 migrate-git-azure-devops 1.0.0-RC.4
@@ -297,7 +297,7 @@ Below is an example of JSON output.
     }
     // ...
   ],
-  "ProgramName": "migrazione-git-azure-devops_darwin_arm64",
+  "ProgramName": "migrate-git-azure-devops_darwin_arm64",
   "Version": "1.1.0-RC.2-SNAPSHOT-77c0913",
   "Commit": "77c0913783f61032286916860bda6996f7291474",
   "BuildDate": "2025-09-23T12:12:06Z"
