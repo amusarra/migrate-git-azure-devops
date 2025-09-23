@@ -15,14 +15,14 @@ import (
 	"time"
 )
 
-// Variabili di versione impostate da ldflags (-X main.version, etc.)
+// Version variables set by ldflags (-X main.version, etc.)
 var (
 	version = "dev"
 	commit  = "none"
 	date    = ""
 )
 
-// prog restituisce il basename dell’eseguibile in esecuzione.
+// prog returns the basename of the running executable.
 func prog() string {
 	return filepath.Base(os.Args[0])
 }
@@ -31,8 +31,8 @@ func printVersion() {
 	fmt.Printf("%s %s\ncommit: %s\nbuilt:  %s\n", prog(), version, commit, date)
 }
 
-// runCmd esegue un comando di sistema propagando l’ambiente corrente ed eventualmente
-// aggiungendo variabili extra; inoltra stdout/stderr al processo chiamante.
+// runCmd executes a system command propagating the current environment and optionally
+// adding extra variables; forwards stdout/stderr to the calling process.
 func runCmd(ctx context.Context, env []string, name string, args ...string) error {
 	cmd := exec.CommandContext(ctx, name, args...)
 	if env != nil {
@@ -43,7 +43,7 @@ func runCmd(ctx context.Context, env []string, name string, args ...string) erro
 	return cmd.Run()
 }
 
-// generateAndSaveReport genera e salva i report nei formati specificati.
+// generateAndSaveReport generates and saves reports in the specified formats.
 func generateAndSaveReport(report Report, cfg Config) error {
 	for _, format := range cfg.ReportFormats {
 		timestamp := time.Now().Format("20060102_150405")
@@ -57,7 +57,7 @@ func generateAndSaveReport(report Report, cfg Config) error {
 	return nil
 }
 
-// generateReport genera il report in JSON o HTML e lo salva nel percorso specificato.
+// generateReport generates the report in JSON or HTML and saves it to the specified path.
 func generateReport(report Report, format, path string) error {
 	switch format {
 	case "json":
@@ -79,7 +79,7 @@ const (
 	RefTypeTags     = "tags"
 )
 
-// getGitRefNames restituisce la lista dei nomi dei branch/tag.
+// getGitRefNames returns the list of branch/tag names.
 func getGitRefNames(repoDir, refType string) ([]string, error) {
 	var cmd *exec.Cmd
 	switch refType {
@@ -118,8 +118,8 @@ func getGitRefNames(repoDir, refType string) ([]string, error) {
 	return names, nil
 }
 
-// generateHTML genera una rappresentazione HTML del report come tabella, usando Bootstrap e il motore di template.
-// Le informazioni su programma/versione/commit/build sono ora mostrate nel footer, allineate a destra.
+// generateHTML generates an HTML representation of the report as a table, using Bootstrap and the template engine.
+// Program/version/commit/build info is now shown in the footer, right-aligned.
 func generateHTML(report Report) string {
 	const tpl = `<!DOCTYPE html>
 <html lang="it">
@@ -185,8 +185,8 @@ func generateHTML(report Report) string {
   <div class="row mt-4">
     <div class="col-12">
       <div class="text-end text-muted small">
-        <div><strong>Programma:</strong> {{ .ProgramName }}</div>
-        <div><strong>Versione:</strong> {{ .Version }}</div>
+        <div><strong>Program:</strong> {{ .ProgramName }}</div>
+        <div><strong>Version:</strong> {{ .Version }}</div>
         <div><strong>Commit:</strong> {{ .Commit }}</div>
         <div><strong>Build Date:</strong> {{ .BuildDate }}</div>
       </div>
@@ -207,11 +207,11 @@ func generateHTML(report Report) string {
 	return buf.String()
 }
 
-// printSummary stampa una tabella di riepilogo con larghezze dinamiche per colonne,
-// mostrando repository, esito e URL web di destinazione.
+// printSummary prints a summary table with dynamic column widths,
+// showing repository, result, and destination web URL.
 func printSummary(results []Summary) {
-	headers := []string{"Repository", "Esito", "Azure URL"}
-	// Calcola larghezze massime
+	headers := []string{"Repository", "Result", "Azure URL"}
+	// Calculate maximum widths
 	repoCol, esitoCol, azureCol := len(headers[0]), len(headers[1]), len(headers[2])
 	for _, s := range results {
 		if len(s.Repo) > repoCol {
@@ -228,7 +228,7 @@ func printSummary(results []Summary) {
 		"+" + strings.Repeat("-", esitoCol+2) +
 		"+" + strings.Repeat("-", azureCol+2) + "+"
 
-	fmt.Println("===== RIEPILOGO MIGRAZIONE =====")
+	fmt.Println("===== MIGRATION SUMMARY =====")
 	fmt.Println(sep)
 	fmt.Printf("| %-*s | %-*s | %-*s |\n",
 		repoCol, headers[0],
@@ -245,8 +245,8 @@ func printSummary(results []Summary) {
 	fmt.Println(strings.Repeat("=", 32))
 }
 
-// parseElement analizza un singolo elemento (numero o intervallo) e aggiunge
-// gli indici zero-based al set seen e alla slice out.
+// parseElement parses a single element (number or range) and adds
+// zero-based indices to the seen set and out slice.
 func parseElement(element string, max int, seen map[int]bool, out *[]int) error {
 	element = strings.TrimSpace(element)
 	if element == "" {
@@ -254,15 +254,15 @@ func parseElement(element string, max int, seen map[int]bool, out *[]int) error 
 	}
 
 	if strings.Contains(element, "-") {
-		// Gestione intervallo
+		// Range handling
 		bits := strings.SplitN(element, "-", 2)
 		if len(bits) != 2 {
-			return fmt.Errorf("intervallo non valido: %s", element)
+			return fmt.Errorf("invalid range: %s", element)
 		}
 		a, err1 := strconv.Atoi(strings.TrimSpace(bits[0]))
 		b, err2 := strconv.Atoi(strings.TrimSpace(bits[1]))
 		if err1 != nil || err2 != nil || a < 1 || b < 1 || a > b || a > max || b > max {
-			return fmt.Errorf("intervallo non valido: %s", element)
+			return fmt.Errorf("invalid range: %s", element)
 		}
 		for i := a; i <= b; i++ {
 			if !seen[i-1] {
@@ -271,10 +271,10 @@ func parseElement(element string, max int, seen map[int]bool, out *[]int) error 
 			}
 		}
 	} else {
-		// Gestione numero singolo
+		// Single number handling
 		n, err := strconv.Atoi(element)
 		if err != nil || n < 1 || n > max {
-			return fmt.Errorf("indice non valido: %s", element)
+			return fmt.Errorf("invalid index: %s", element)
 		}
 		if !seen[n-1] {
 			*out = append(*out, n-1)
@@ -284,7 +284,7 @@ func parseElement(element string, max int, seen map[int]bool, out *[]int) error 
 	return nil
 }
 
-// parseSelection converte "1,3-5" in indici zero-based ordinati univoci.
+// parseSelection converts "1,3-5" to sorted unique zero-based indices.
 func parseSelection(sel string, max int) ([]int, error) {
 	var out []int
 	parts := strings.Split(sel, ",")
@@ -300,7 +300,7 @@ func parseSelection(sel string, max int) ([]int, error) {
 	return out, nil
 }
 
-// dirSize calcola la dimensione totale di una directory in byte.
+// dirSize calculates the total size of a directory in bytes.
 func dirSize(path string) (int64, error) {
 	var size int64
 	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {

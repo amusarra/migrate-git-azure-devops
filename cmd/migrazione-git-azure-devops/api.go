@@ -13,16 +13,16 @@ import (
 	"time"
 )
 
-// httpClient è un'istanza condivisa di http.Client con timeout configurato
+// httpClient is a shared instance of http.Client with configured timeout
 var httpClient = &http.Client{
 	Timeout: 30 * time.Second,
 	CheckRedirect: func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse // non seguire i redirect
+		return http.ErrUseLastResponse // do not follow redirects
 	},
 }
 
-// getRepos chiama l’API Azure DevOps per ottenere l’elenco dei repository.
-// Gli errori sono restituiti al chiamante per la gestione centralizzata.
+// getRepos calls the Azure DevOps API to get the list of repositories.
+// Errors are returned to the caller for centralized handling.
 func getRepos(ctx context.Context, org, project, pat string, trace bool) ([]Repo, error) {
 	path := fmt.Sprintf("_apis/git/repositories?api-version=%s", apiVersion)
 	body, code, err := httpReq(ctx, "GET", org, project, path, pat, nil, trace)
@@ -30,37 +30,37 @@ func getRepos(ctx context.Context, org, project, pat string, trace bool) ([]Repo
 		return nil, err
 	}
 	if code < 200 || code >= 300 {
-		return nil, fmt.Errorf("errore API (HTTP %d): %s", code, string(body))
+		return nil, fmt.Errorf("API error (HTTP %d): %s", code, string(body))
 	}
 	var resp listReposResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("risposta non valida: %w", err)
+		return nil, fmt.Errorf("invalid response: %w", err)
 	}
 	return resp.Value, nil
 }
 
-// createRepo crea un repository in destinazione via API Azure DevOps.
-// Gli errori sono restituiti al chiamante per la gestione centralizzata.
+// createRepo creates a destination repository via Azure DevOps API.
+// Errors are returned to the caller for centralized handling.
 func createRepo(ctx context.Context, org, project, pat, name string, trace bool) error {
 	path := fmt.Sprintf("_apis/git/repositories?api-version=%s", apiVersion)
 	payload := map[string]string{"name": name}
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(payload); err != nil {
-		return fmt.Errorf("errore nella codifica del payload: %w", err)
+		return fmt.Errorf("error encoding payload: %w", err)
 	}
 	body, code, err := httpReq(ctx, "POST", org, project, path, pat, buf.Bytes(), trace)
 	if err != nil {
 		return err
 	}
 	if code != 200 && code != 201 {
-		return fmt.Errorf("errore API creazione repo (HTTP %d): %s", code, string(body))
+		return fmt.Errorf("API error creating repo (HTTP %d): %s", code, string(body))
 	}
 	return nil
 }
 
-// httpReq effettua una richiesta HTTP autenticata in Basic (con PAT) verso Azure DevOps.
-// - Non segue i redirect (CheckRedirect -> ErrUseLastResponse) così da intercettare 3xx.
-// - Restituisce body, status code e l’eventuale errore di rete/IO.
+// httpReq performs an authenticated HTTP request using Basic (with PAT) to Azure DevOps.
+// - Does not follow redirects (CheckRedirect -> ErrUseLastResponse) to intercept 3xx.
+// - Returns body, status code, and any network/IO error.
 func httpReq(ctx context.Context, method, org, project, path, pat string, body []byte, trace bool) ([]byte, int, error) {
 	var urlStr string
 	if project == "" || project == "-" {
@@ -87,38 +87,38 @@ func httpReq(ctx context.Context, method, org, project, path, pat string, body [
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			fmt.Fprintln(os.Stderr, "Errore nella chiusura della risposta HTTP:", err)
+			fmt.Fprintln(os.Stderr, "Error closing HTTP response:", err)
 		}
 	}()
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("errore durante la lettura della risposta: %w", err)
+		return nil, resp.StatusCode, fmt.Errorf("error reading response: %w", err)
 	}
 
-	// Azure DevOps risponde con 302 a una pagina di login invece di 401 se il PAT non è valido.
-	// Intercettiamo questo caso per fornire un errore più chiaro.
+	// Azure DevOps responds with 302 to a login page instead of 401 if the PAT is invalid.
+	// We intercept this case to provide a clearer error.
 	if resp.StatusCode == http.StatusFound { // 302
-		return data, http.StatusUnauthorized, fmt.Errorf("autenticazione fallita (ricevuto HTTP 302, probabile PAT non valido o scaduto)")
+		return data, http.StatusUnauthorized, fmt.Errorf("authentication failed (received HTTP 302, likely invalid or expired PAT)")
 	}
 
 	return data, resp.StatusCode, nil
 }
 
-// basicAuth costruisce l’header Authorization Basic a partire dal PAT fornito.
+// basicAuth builds the Authorization Basic header from the provided PAT.
 func basicAuth(pat string) string {
 	token := ":" + pat
 	return "Basic " + base64.StdEncoding.EncodeToString([]byte(token))
 }
 
-// redactToken oscura eventuali credenziali presenti in un URL, utile per log/trace sicuri.
+// redactToken masks any credentials present in a URL, useful for safe log/trace.
 func redactToken(s string) string {
 	if s == "" {
 		return ""
 	}
 	u, err := url.Parse(s)
 	if err != nil {
-		// Se il parsing fallisce, restituisce la stringa originale per non bloccare il logging
+		// If parsing fails, return the original string to not block logging
 		return s
 	}
 	if u.User != nil {

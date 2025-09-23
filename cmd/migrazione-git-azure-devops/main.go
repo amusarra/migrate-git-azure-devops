@@ -1,6 +1,6 @@
-// Command migrazione-git-azure-devops migra repository Git tra progetti/organizzazioni Azure DevOps,
-// con modalità interattiva (wizard) o non interattiva, supporto dry-run, filtraggio e push mirror.
-// Le credenziali sono lette dalle variabili SRC_PAT e DST_PAT.
+// Command migrazione-git-azure-devops migrates Git repositories between Azure DevOps projects/organizations,
+// with interactive (wizard) or non-interactive mode, dry-run support, filtering, and mirror push.
+// Credentials are read from SRC_PAT and DST_PAT environment variables.
 package main
 
 import (
@@ -20,20 +20,20 @@ const (
 	apiVersion = "7.1"
 )
 
-// Repo rappresenta un repository Azure DevOps con i principali URL.
+// Repo represents an Azure DevOps repository with main URLs.
 type Repo struct {
 	Name      string `json:"name"`
 	RemoteURL string `json:"remoteUrl"`
 	WebURL    string `json:"webUrl"`
 }
 
-// listReposResponse mappa la risposta JSON della lista repository.
+// listReposResponse maps the JSON response of the repository list.
 type listReposResponse struct {
 	Count int    `json:"count"`
 	Value []Repo `json:"value"`
 }
 
-// Config raccoglie tutti i parametri CLI e di ambiente necessari alla migrazione.
+// Config collects all CLI and environment parameters needed for migration.
 type Config struct {
 	SrcOrg     string
 	SrcProject string
@@ -51,32 +51,32 @@ type Config struct {
 	DstPAT      string
 	ShowVersion bool
 
-	ReportFormats []string // Formati del report: json, html, etc.
-	ReportPath    string   // Percorso base per salvare il report
+	ReportFormats []string // Report formats: json, html, etc.
+	ReportPath    string   // Base path to save the report
 }
 
-// Summary riassume l’esito della migrazione per un singolo repository.
+// Summary summarizes the migration outcome for a single repository.
 type Summary struct {
 	Repo        string
 	Action      string
 	Result      string
 	DstWebURL   string
-	SrcWebURL   string // URL del repository sorgente
+	SrcWebURL   string // Source repository URL
 	DstClone    string
 	Skipped     bool
 	ErrDetails  string
-	NumBranches int      // Numero di branch remoti
-	NumTags     int      // Numero di tag
-	Size        int64    // Dimensione del repository in byte
-	BranchNames []string // Nomi dei branch remoti
-	TagNames    []string // Nomi dei tag
+	NumBranches int      // Number of remote branches
+	NumTags     int      // Number of tags
+	Size        int64    // Repository size in bytes
+	BranchNames []string // Remote branch names
+	TagNames    []string // Tag names
 }
 
-// Report contiene le informazioni globali del report e i riepiloghi per repository.
+// Report contains global report information and per-repository summaries.
 type Report struct {
 	StartTime   time.Time
 	EndTime     time.Time
-	Duration    float64 // in minuti
+	Duration    float64 // in minutes
 	Hostname    string
 	Summaries   []Summary
 	ProgramName string
@@ -85,37 +85,37 @@ type Report struct {
 	BuildDate   string
 }
 
-// main è il punto di ingresso dell’applicazione: delega a Execute() definita in root.go.
+// main is the application entry point: delegates to Execute() defined in root.go.
 func main() {
 	Execute()
 }
 
-// cmdListRepos elenca i repository nella sorgente e li stampa in output.
+// cmdListRepos lists the repositories in the source and prints them to output.
 func cmdListRepos(cfg Config) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	repos, err := getRepos(ctx, cfg.SrcOrg, cfg.SrcProject, cfg.SrcPAT, cfg.Trace)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[ERRORE API] Chiamata fallita per %s/%s: %v\n", cfg.SrcOrg, cfg.SrcProject, err)
+		fmt.Fprintf(os.Stderr, "[API ERROR] Call failed for %s/%s: %v\n", cfg.SrcOrg, cfg.SrcProject, err)
 		if cfg.Trace {
-			fmt.Fprintf(os.Stderr, "[TRACE] Dettagli errore: %v\n", err)
+			fmt.Fprintf(os.Stderr, "[TRACE] Error details: %v\n", err)
 		}
 		os.Exit(1)
 	}
 	if len(repos) == 0 {
-		fmt.Printf("Nessun repository trovato in %s/%s\n", cfg.SrcOrg, cfg.SrcProject)
+		fmt.Printf("No repository found in %s/%s\n", cfg.SrcOrg, cfg.SrcProject)
 		return nil
 	}
-	fmt.Printf("Repository disponibili in %s/%s:\n\n", cfg.SrcOrg, cfg.SrcProject)
+	fmt.Printf("Repositories available in %s/%s:\n\n", cfg.SrcOrg, cfg.SrcProject)
 	for _, r := range repos {
 		fmt.Printf("- %s\n    cloneUrl: %s\n    webUrl:   %s\n", r.Name, r.RemoteURL, r.WebURL)
 	}
 	return nil
 }
 
-// runWizard guida l’utente in una procedura interattiva di selezione e migrazione
-// dei repository, chiedendo conferma prima dell’esecuzione.
+// runWizard guides the user through an interactive procedure for selecting and migrating
+// repositories, asking for confirmation before execution.
 func runWizard(cfg Config) error {
 	startTime := time.Now()
 	hostname, _ := os.Hostname()
@@ -125,17 +125,17 @@ func runWizard(cfg Config) error {
 
 	in := bufio.NewReader(os.Stdin)
 
-	// 1) Lista repo sorgente
+	// 1) List source repos
 	repos, err := getRepos(ctx, cfg.SrcOrg, cfg.SrcProject, cfg.SrcPAT, cfg.Trace)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[ERRORE API] Chiamata fallita per sorgente %s/%s: %v\n", cfg.SrcOrg, cfg.SrcProject, err)
+		fmt.Fprintf(os.Stderr, "[API ERROR] Call failed for source %s/%s: %v\n", cfg.SrcOrg, cfg.SrcProject, err)
 		if cfg.Trace {
-			fmt.Fprintf(os.Stderr, "[TRACE] Dettagli errore: %v\n", err)
+			fmt.Fprintf(os.Stderr, "[TRACE] Error details: %v\n", err)
 		}
 		os.Exit(1)
 	}
 	if len(repos) == 0 {
-		return fmt.Errorf("nessun repository trovato in %s/%s", cfg.SrcOrg, cfg.SrcProject)
+		return fmt.Errorf("no repository found in %s/%s", cfg.SrcOrg, cfg.SrcProject)
 	}
 	sort.Slice(repos, func(i, j int) bool { return strings.ToLower(repos[i].Name) < strings.ToLower(repos[j].Name) })
 
@@ -143,7 +143,7 @@ func runWizard(cfg Config) error {
 	for i, r := range repos {
 		fmt.Printf("%3d) %s\n", i+1, r.Name)
 	}
-	fmt.Print("\nSeleziona indici (es. 1,3-5) oppure premi Invio per selezionare TUTTI: ")
+	fmt.Print("\nSelect indices (e.g. 1,3-5) or press Enter to select ALL: ")
 	selection, _ := in.ReadString('\n')
 	selection = strings.TrimSpace(selection)
 
@@ -160,12 +160,12 @@ func runWizard(cfg Config) error {
 		}
 	}
 
-	// 3) Verifica esistenza in destinazione
+	// 3) Check existence in destination
 	dstRepos, err := getRepos(ctx, cfg.DstOrg, cfg.DstProject, cfg.DstPAT, cfg.Trace)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[ERRORE API] Chiamata fallita per destinazione %s/%s: %v\n", cfg.DstOrg, cfg.DstProject, err)
+		fmt.Fprintf(os.Stderr, "[API ERROR] Call failed for destination %s/%s: %v\n", cfg.DstOrg, cfg.DstProject, err)
 		if cfg.Trace {
-			fmt.Fprintf(os.Stderr, "[TRACE] Dettagli errore: %v\n", err)
+			fmt.Fprintf(os.Stderr, "[TRACE] Error details: %v\n", err)
 		}
 		os.Exit(1)
 	}
@@ -185,22 +185,22 @@ func runWizard(cfg Config) error {
 			}
 		}
 		if anyExists {
-			fmt.Print("\nAlcuni repo esistono già in destinazione. Eseguire push --force per quelli esistenti? [s/N]: ")
+			fmt.Print("\nSome repos already exist in destination. Perform push --force for existing ones? [y/N]: ")
 			ans, _ := in.ReadString('\n')
 			ans = strings.TrimSpace(strings.ToLower(ans))
 			forcePush = ans == "s" || ans == "si" || ans == "y" || ans == "yes"
 		}
 	}
 
-	// 4) Riepilogo
-	fmt.Println("\n===== RIEPILOGO AZIONI =====")
+	// 4) Summary
+	fmt.Println("\n===== ACTION SUMMARY =====")
 	for _, r := range selected {
 		action := "create+push"
 		if exists[r.Name] {
 			if forcePush {
 				action = "push --mirror --force"
 			} else {
-				action = "skip (esiste, no --force)"
+				action = "skip (exists, no --force)"
 			}
 		}
 		fmt.Printf("- %s: %s\n", r.Name, action)
@@ -208,27 +208,27 @@ func runWizard(cfg Config) error {
 	fmt.Printf("Dry-run: %v\n", cfg.DryRun)
 	fmt.Println("============================")
 
-	// 5) Conferma
-	fmt.Print("Procedere con la migrazione? [s/N]: ")
+	// 5) Confirmation
+	fmt.Print("Proceed with migration? [y/N]: ")
 	confirm, _ := in.ReadString('\n')
 	confirm = strings.TrimSpace(strings.ToLower(confirm))
 	if confirm != "s" && confirm != "si" && confirm != "y" && confirm != "yes" {
-		fmt.Println("Annullato.")
+		fmt.Println("Cancelled.")
 		return nil
 	}
 
-	// 6) Esegui migrazione con avanzamento
+	// 6) Execute migration with progress
 	summary, err := migrateRepos(ctx, cfg, selected, exists, forcePush)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Errore migrazione:", err)
+		fmt.Fprintln(os.Stderr, "Migration error:", err)
 	}
 
 	endTime := time.Now()
 	duration := endTime.Sub(startTime).Minutes()
 
-	// 7) Report finale
+	// 7) Final report
 	printSummary(summary)
-	// Genera report se richiesto
+	// Generate report if requested
 	if cfg.ReportFormats != nil {
 		report := Report{
 			StartTime:   startTime,
@@ -242,14 +242,14 @@ func runWizard(cfg Config) error {
 			BuildDate:   date,
 		}
 		if err := generateAndSaveReport(report, cfg); err != nil {
-			fmt.Fprintln(os.Stderr, "Errore generazione report:", err)
+			fmt.Fprintln(os.Stderr, "Report generation error:", err)
 		}
 	}
 	return nil
 }
 
-// runNonInteractive esegue la migrazione senza interazione, in base ai flag forniti.
-// Gestisce filtri, liste da file e il riepilogo finale.
+// runNonInteractive performs migration without interaction, based on provided flags.
+// Handles filters, lists from file, and the final summary.
 func runNonInteractive(cfg Config) error {
 	startTime := time.Now()
 	hostname, _ := os.Hostname()
@@ -257,17 +257,17 @@ func runNonInteractive(cfg Config) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
-	// carica lista sorgente
+	// load source list
 	srcRepos, err := getRepos(ctx, cfg.SrcOrg, cfg.SrcProject, cfg.SrcPAT, cfg.Trace)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[ERRORE API] Chiamata fallita per sorgente %s/%s: %v\n", cfg.SrcOrg, cfg.SrcProject, err)
+		fmt.Fprintf(os.Stderr, "[API ERROR] Call failed for source %s/%s: %v\n", cfg.SrcOrg, cfg.SrcProject, err)
 		if cfg.Trace {
-			fmt.Fprintf(os.Stderr, "[TRACE] Dettagli errore: %v\n", err)
+			fmt.Fprintf(os.Stderr, "[TRACE] Error details: %v\n", err)
 		}
 		os.Exit(1)
 	}
 
-	// costruisci set sorgente per lookup rapido
+	// build source set for fast lookup
 	srcSet := map[string]Repo{}
 	for _, r := range srcRepos {
 		srcSet[r.Name] = r
@@ -277,9 +277,9 @@ func runNonInteractive(cfg Config) error {
 	var preSummary []Summary
 
 	if len(cfg.RepoList) > 0 {
-		// Usa esattamente i nomi forniti dall'utente:
-		// - se esistono in sorgente -> li migriamo
-		// - se NON esistono -> aggiungiamo una riga di errore al riepilogo
+		// Use exactly the names provided by the user:
+		// - if they exist in source -> migrate them
+		// - if NOT exist -> add an error row to the summary
 		for _, name := range cfg.RepoList {
 			nm := strings.TrimSpace(name)
 			if nm == "" {
@@ -290,14 +290,14 @@ func runNonInteractive(cfg Config) error {
 			} else {
 				preSummary = append(preSummary, Summary{
 					Repo:   nm,
-					Result: "ERRORE: sorgente non trovato",
+					Result: "ERROR: source not found",
 				})
 			}
 		}
 	} else if cfg.Filter != "" {
 		re, err := regexp.Compile(cfg.Filter)
 		if err != nil {
-			return fmt.Errorf("regex non valida: %w", err)
+			return fmt.Errorf("invalid regex: %w", err)
 		}
 		for _, r := range srcRepos {
 			if re.MatchString(r.Name) {
@@ -308,22 +308,22 @@ func runNonInteractive(cfg Config) error {
 		selected = srcRepos
 	}
 
-	// Se non ci sono repo da migrare ma abbiamo errori pre-summary, stampa il riepilogo errori ed esci
+	// If there are no repos to migrate but we have pre-summary errors, print the error summary and exit
 	if len(selected) == 0 {
 		if len(preSummary) > 0 {
 			printSummary(preSummary)
 			return nil
 		}
-		fmt.Println("Nessun repository da migrare.")
+		fmt.Println("No repository to migrate.")
 		return nil
 	}
 
-	// destinazione
+	// destination
 	dstRepos, err := getRepos(ctx, cfg.DstOrg, cfg.DstProject, cfg.DstPAT, cfg.Trace)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[ERRORE API] Chiamata fallita per destinazione %s/%s: %v\n", cfg.DstOrg, cfg.DstProject, err)
+		fmt.Fprintf(os.Stderr, "[API ERROR] Call failed for destination %s/%s: %v\n", cfg.DstOrg, cfg.DstProject, err)
 		if cfg.Trace {
-			fmt.Fprintf(os.Stderr, "[TRACE] Dettagli errore: %v\n", err)
+			fmt.Fprintf(os.Stderr, "[TRACE] Error details: %v\n", err)
 		}
 		os.Exit(1)
 	}
@@ -332,19 +332,19 @@ func runNonInteractive(cfg Config) error {
 		exists[r.Name] = true
 	}
 
-	// Migrazione dei soli repo esistenti nella sorgente
+	// Migrate only repos existing in source
 	migSummary, err := migrateRepos(ctx, cfg, selected, exists, cfg.ForcePush)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Errore migrazione:", err)
+		fmt.Fprintln(os.Stderr, "Migration error:", err)
 	}
 
 	endTime := time.Now()
 	duration := endTime.Sub(startTime).Minutes()
 
-	// Riepilogo completo: errori per repo non trovati + risultati migrazione
+	// Complete summary: errors for repos not found + migration results
 	all := append(preSummary, migSummary...)
 	printSummary(all)
-	// Genera report se richiesto
+	// Generate report if requested
 	if cfg.ReportFormats != nil {
 		report := Report{
 			StartTime:   startTime,
@@ -358,17 +358,17 @@ func runNonInteractive(cfg Config) error {
 			BuildDate:   date,
 		}
 		if err := generateAndSaveReport(report, cfg); err != nil {
-			fmt.Fprintln(os.Stderr, "Errore generazione report:", err)
+			fmt.Fprintln(os.Stderr, "Report generation error:", err)
 		}
 	}
 	return nil
 }
 
-// migrateRepos esegue la migrazione dei repository selezionati:
-// - clona in mirror dal sorgente in una directory temporanea,
-// - crea la repo di destinazione se mancante,
-// - esegue il push mirror (con --force se richiesto),
-// rispettando le modalità dry-run e trace.
+// migrateRepos performs migration of selected repositories:
+// - clones in mirror from source into a temporary directory,
+// - creates the destination repo if missing,
+// - performs mirror push (with --force if requested),
+// respecting dry-run and trace modes.
 func migrateRepos(ctx context.Context, cfg Config, repos []Repo, dstExists map[string]bool, forcePush bool) ([]Summary, error) {
 	tmpDir, err := os.MkdirTemp("", "tmp_migrazione_git_")
 	if err != nil {
@@ -376,7 +376,7 @@ func migrateRepos(ctx context.Context, cfg Config, repos []Repo, dstExists map[s
 	}
 	defer func() {
 		if err := os.RemoveAll(tmpDir); err != nil {
-			fmt.Fprintln(os.Stderr, "Errore nella rimozione della directory temporanea:", err)
+			fmt.Fprintln(os.Stderr, "Error removing temporary directory:", err)
 		}
 	}()
 
@@ -397,37 +397,37 @@ func migrateRepos(ctx context.Context, cfg Config, repos []Repo, dstExists map[s
 		sum.DstClone = dstURLRedacted
 		sum.DstWebURL = fmt.Sprintf("https://dev.azure.com/%s/%s/_git/%s", cfg.DstOrg, dstProjectEnc, repoEnc)
 
-		// Calcola se esisteva già PRIMA della migrazione
+		// Calculate if it already existed BEFORE migration
 		origExists := dstExists[r.Name]
 
-		// Se esiste già e non si vuole forzare, salta subito clone e push
+		// If it already exists and force is not wanted, skip clone and push immediately
 		if origExists && !forcePush {
 			if cfg.DryRun {
-				fmt.Println("  [DRY] Repo già presente: salterei clone e push (usa --force-push per forzare).")
+				fmt.Println("  [DRY] Repo already present: would skip clone and push (use --force-push to force).")
 				sum.Result = "DRY-RUN"
 			} else {
-				fmt.Println("  Repo già presente in destinazione. Clone/Push NON eseguiti (usa --force-push per forzare).")
-				sum.Result = "SKIPPED: repo già presente"
+				fmt.Println("  Repo already present in destination. Clone/Push NOT performed (use --force-push to force).")
+				sum.Result = "SKIPPED: repo already present"
 			}
 			results = append(results, sum)
 			fmt.Println()
 			continue
 		}
 
-		// Clone mirror (si arriva qui se: repo non esiste in dest oppure esiste ma con force-push)
+		// Mirror clone (arrives here if: repo does not exist in dest or exists but with force-push)
 		repodir := filepath.Join(tmpDir, r.Name+".git")
 		if cfg.DryRun {
 			sum.Action = "DRY-RUN"
 			fmt.Printf("  [DRY] git clone --mirror '%s' '%s'\n", redactToken(srcURL), repodir)
 		} else {
 			if err := runCmd(ctx, nil, "git", "clone", "--mirror", srcURL, repodir); err != nil {
-				sum.Result = "ERRORE: sorgente non trovato"
+				sum.Result = "ERROR: source not found"
 				sum.ErrDetails = err.Error()
-				fmt.Println("  Errore: repository sorgente non trovato o accesso negato")
+				fmt.Println("  Error: source repository not found or access denied")
 				results = append(results, sum)
 				continue
 			}
-			// Ottieni nomi branch/tag e conta con len() per evitare doppia esecuzione git
+			// Get branch/tag names and count with len() to avoid double git execution
 			if branchNames, err := getGitRefNames(repodir, RefTypeBranches); err == nil {
 				sum.BranchNames = branchNames
 				sum.NumBranches = len(branchNames)
@@ -441,24 +441,24 @@ func migrateRepos(ctx context.Context, cfg Config, repos []Repo, dstExists map[s
 			}
 		}
 
-		// Crea repo in destinazione se mancante
+		// Create repo in destination if missing
 		if !dstExists[r.Name] && !cfg.DryRun {
 			if err := createRepo(ctx, cfg.DstOrg, cfg.DstProject, cfg.DstPAT, r.Name, cfg.Trace); err != nil {
-				sum.Result = "ERRORE: creazione destinazione"
+				sum.Result = "ERROR: destination creation"
 				sum.ErrDetails = err.Error()
-				fmt.Printf("  Errore nella creazione della repo %s in destinazione: %v\n", r.Name, err)
+				fmt.Printf("  Error creating repo %s in destination: %v\n", r.Name, err)
 				if cfg.Trace {
-					fmt.Fprintf(os.Stderr, "[TRACE] Dettagli errore creazione repo: %v\n", err)
+					fmt.Fprintf(os.Stderr, "[TRACE] Error details creating repo: %v\n", err)
 				}
 				results = append(results, sum)
 				continue
 			}
 			dstExists[r.Name] = true
 		} else if !dstExists[r.Name] && cfg.DryRun {
-			fmt.Printf("  [DRY] Creerei la repo in destinazione: %s\n", r.Name)
+			fmt.Printf("  [DRY] Would create repo in destination: %s\n", r.Name)
 		}
 
-		// Push mirror
+		// Mirror push
 		if dstExists[r.Name] {
 			if cfg.DryRun {
 				if origExists && forcePush {
@@ -474,9 +474,9 @@ func migrateRepos(ctx context.Context, cfg Config, repos []Repo, dstExists map[s
 				}
 				args = append(args, dstURL)
 				if err := runCmd(ctx, nil, "git", args...); err != nil {
-					sum.Result = "ERRORE: push"
+					sum.Result = "ERROR: push"
 					sum.ErrDetails = err.Error()
-					fmt.Println("  Errore nel push verso destinazione")
+					fmt.Println("  Error pushing to destination")
 					results = append(results, sum)
 					continue
 				}
@@ -484,7 +484,7 @@ func migrateRepos(ctx context.Context, cfg Config, repos []Repo, dstExists map[s
 				sum.Result = "OK"
 			}
 		} else {
-			sum.Result = "SKIPPED: destinazione mancante"
+			sum.Result = "SKIPPED: missing destination"
 		}
 
 		results = append(results, sum)
