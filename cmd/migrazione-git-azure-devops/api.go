@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -44,8 +45,11 @@ func getRepos(ctx context.Context, org, project, pat string, trace bool) ([]Repo
 func createRepo(ctx context.Context, org, project, pat, name string, trace bool) error {
 	path := fmt.Sprintf("_apis/git/repositories?api-version=%s", apiVersion)
 	payload := map[string]string{"name": name}
-	b, _ := json.Marshal(payload)
-	body, code, err := httpReq(ctx, "POST", org, project, path, pat, b, trace)
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(payload); err != nil {
+		return fmt.Errorf("errore nella codifica del payload: %w", err)
+	}
+	body, code, err := httpReq(ctx, "POST", org, project, path, pat, buf.Bytes(), trace)
 	if err != nil {
 		return err
 	}
@@ -69,7 +73,7 @@ func httpReq(ctx context.Context, method, org, project, path, pat string, body [
 		fmt.Fprintln(os.Stderr, "[TRACE]", method, urlStr)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, urlStr, strings.NewReader(string(body)))
+	req, err := http.NewRequestWithContext(ctx, method, urlStr, bytes.NewReader(body))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -79,9 +83,6 @@ func httpReq(ctx context.Context, method, org, project, path, pat string, body [
 	}
 
 	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, 0, err
-	}
 	if err != nil {
 		return nil, 0, err
 	}
