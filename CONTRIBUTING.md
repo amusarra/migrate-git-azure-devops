@@ -1,103 +1,103 @@
-# Contribuire al progetto migrazione-git-azure-devops
+# Contributing to the migrazione-git-azure-devops project
 
-Grazie per il tuo interesse! Questo documento spiega come proporre modifiche, aprire issue e inviare pull request a questo progetto Go.
+Thank you for your interest! This document explains how to propose changes, open issues, and submit pull requests to this Go project.
 
-## Come posso aiutare?
+## How can I help?
 
-- Segnalazione bug: apri una Issue descrivendo passi per riprodurre, output atteso/ottenuto e versione del tool (`--version`).
-- Proposte di feature: apri una Issue con contesto, problema, soluzione proposta e impatto.
-- Documentazione: correzioni e miglioramenti al README o ai commenti del codice sono benvenuti.
-- Codice: invia PR piccole e mirate, con test (dove ha senso) e descrizione chiara.
+- Bug reports: open an Issue describing steps to reproduce, expected/actual output, and tool version (`--version`).
+- Feature proposals: open an Issue with context, problem, proposed solution, and impact.
+- Documentation: corrections and improvements to the README or code comments are welcome.
+- Code: submit small, focused PRs with tests (where appropriate) and a clear description.
 
-## Requisiti
+## Requirements
 
-- Go 1.22+ (consigliato l’ultimo minor)
+- Go 1.22+ (latest minor recommended)
 - Git
-- Opzionale:
-  - golangci-lint per il lint locale
-  - Docker/Buildx per testare l’immagine
-  - GoReleaser per build snapshot locali
+- Optional:
+  - golangci-lint for local linting
+  - Docker/Buildx to test the image
+  - GoReleaser for local snapshot builds
 
-## Setup ambiente
+## Environment setup
 
 ```bash
 git clone https://github.com/amusarra/migrazione-git-azure-devops.git
-cd migrazione-git-azure-devops
+cd migrate-git-azure-devops
 go mod tidy
 ```
 
-Build locale del tool:
+Local build of the tool:
 
 ```bash
-go build -o bin/migrazione-git-azure-devops ./cmd/migrazione-git-azure-devops
-./bin/migrazione-git-azure-devops --version
+go build -o bin/migrate-git-azure-devops ./cmd/migrate-git-azure-devops
+./bin/migrate-git-azure-devops --version
 ```
 
-Snapshot con GoReleaser (artefatti in dist/):
+Snapshot with GoReleaser (artifacts in dist/):
 
 ```bash
 goreleaser release --clean --snapshot --skip=publish
 ```
 
-## Flusso di lavoro per le PR
+## PR workflow
 
-1. Forka il repository e crea un branch da `main`:
-   - nome branch suggerito: tipo/scope-breve-esempio (es. `feat/wizard-prompt`, `fix/http-302`)
-2. Sviluppo:
+1. Fork the repository and create a branch from `main`:
+   - suggested branch name: type/short-scope-example (e.g. `feat/wizard-prompt`, `fix/http-302`)
+2. Development:
    - format: `go fmt ./...`
-   - analisi: `go vet ./...`
-   - lint (opzionale ma consigliato): `golangci-lint run`
-   - test (se presenti): `go test ./...`
+   - analysis: `go vet ./...`
+   - lint (optional but recommended): `golangci-lint run`
+   - test (if present): `go test ./...`
    - build: `go build ./cmd/migrazione-git-azure-devops`
-3. Mantieni le modifiche piccole, con commenti godoc su funzioni e blocchi complessi.
-4. Aggiorna README se cambi l’uso della CLI o aggiungi flag.
-5. Apri la PR descrivendo:
-   - problema risolto/feature
-   - cambiamenti principali
-   - note su compatibilità, impatti e come testare
+3. Keep changes small, with godoc comments on functions and complex blocks.
+4. Update README if you change CLI usage or add flags.
+5. Open the PR describing:
+   - problem solved/feature
+   - main changes
+   - notes on compatibility, impacts, and how to test
 
-## Stile dei commit (Conventional Commits)
+## Commit style (Conventional Commits)
 
-Usa messaggi tipo:
+Use messages like:
 
-- feat: aggiungi una nuova funzionalità
-- fix: correggi un bug
-- docs: modifica documentazione
-- refactor: refactoring senza cambiamenti funzionali
-- test: aggiungi/aggiorna test
-- build/ci: cambi a build system o pipeline CI
-- chore: attività di manutenzione
+- feat: add a new feature
+- fix: fix a bug
+- docs: update documentation
+- refactor: refactoring without functional changes
+- test: add/update tests
+- build/ci: changes to build system or CI pipeline
+- chore: maintenance tasks
 
-Esempi:
+Examples:
 
-- `feat: aggiunto flag --version`
-- `fix: gestito HTTP 302 senza follow dei redirect`
+- `feat: added --version flag`
+- `fix: handled HTTP 302 without following redirects`
 
-## Linee guida codice
+## Code guidelines
 
-- Mantieni funzioni piccole e coese; estrai helper in file dedicati (es. api.go, utils.go).
-- Documenta funzioni e tipi con commenti godoc.
-- Gestisci sempre gli errori (non ignorare i return di Close/Remove).
-- Non stampare body delle risposte HTTP in chiaro, se non in `--trace`.
-- Mantieni l’output CLI chiaro e stabile; evita breaking changes non necessari.
+- Keep functions small and cohesive; extract helpers into dedicated files (e.g. api.go, utils.go).
+- Document functions and types with godoc comments.
+- Always handle errors (do not ignore returns from Close/Remove).
+- Do not print HTTP response bodies in clear text, except in `--trace`.
+- Keep CLI output clear and stable; avoid unnecessary breaking changes.
 
-## Versione e Release
+## Version and Release
 
-- Le variabili `version`, `commit`, `date` sono impostate via `-ldflags` in build/release.
-- Non aggiornare manualmente la versione nel codice.
-- I rilasci sono taggati (SemVer) e gestiti da GitHub Actions + GoReleaser.
-- Il changelog è generato automaticamente.
+- The `version`, `commit`, `date` variables are set via `-ldflags` in build/release.
+- Do not manually update the version in the code.
+- Releases are tagged (SemVer) and managed by GitHub Actions + GoReleaser.
+- The changelog is generated automatically.
 
-## Sicurezza
+## Security
 
-- Non includere credenziali/PAT negli issue, PR o log.
-- Per vulnerabilità, usa GitHub Security Advisories o contatta i maintainer in privato.
-- Non aprire Issue pubbliche con PoC che espongono dati sensibili.
+- Do not include credentials/PAT in issues, PRs, or logs.
+- For vulnerabilities, use GitHub Security Advisories or contact maintainers privately.
+- Do not open public Issues with PoC exposing sensitive data.
 
-## Codice di condotta
+## Code of Conduct
 
-Adottiamo un comportamento rispettoso e professionale. Come riferimento, il [Contributor Covenant](https://www.contributor-covenant.org/version/2/1/code_of_conduct/) è una buona base.
+We adopt respectful and professional behavior. As a reference, the [Contributor Covenant](https://www.contributor-covenant.org/version/2/1/code_of_conduct/) is a good base.
 
-## Domande?
+## Questions?
 
-Apri una Issue con etichetta “question” o avvia una discussione. Grazie per il contributo!
+Open an Issue with the “question” label or start a discussion. Thank you for your contribution!

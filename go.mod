@@ -1,4 +1,4 @@
-module github.com/amusarra/migrazione-git-azure-devops
+module github.com/amusarra/migrate-git-azure-devops
 
 go 1.25
 

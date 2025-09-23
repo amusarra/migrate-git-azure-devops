@@ -1,280 +1,282 @@
-# Tool di migrazione repository Git Azure DevOps tra progetti/organizzazioni
+# Azure DevOps Git Repository Migration Tool between Projects/Organizations
 
 ![Go Build](https://github.com/amusarra/migrazione-git-azure-devops/actions/workflows/build.yml/badge.svg)
-![Go Release](https://github.com/amusarra/migrazione-git-azure-devops/actions/workflows/release.yml/badge.svg)
+![Go Release](https://github.com/amusarra/migrate-git-azure-devops/actions/workflows/release.yml/badge.svg)
 
-CLI in Go per migrare repository Git tra progetti/organizzazioni Azure DevOps:
+Go CLI to migrate Git repositories between Azure DevOps projects/organizations:
 
-- modalità interattiva (wizard) o non interattiva (flag)
-- mirror completo (branch/tag, con rimozione di ref eliminate)
-- filtri (regex) e file lista
-- dry-run e trace
+- interactive (wizard) or non-interactive (flags) mode
+- full mirror (branches/tags, with removal of deleted refs)
+- filters (regex) and list file
+- dry-run and trace
 
-Requisiti credenziali:
+Credential requirements:
 
-- SRC_PAT: Personal access token con scope "Code Read"
-- DST_PAT: Personal access token con scope "Code Read, Write & Manage" (richiesto per migrazione)
+- SRC_PAT: Personal access token with "Code Read" scope
+- DST_PAT: Personal access token with "Code Read, Write & Manage" scope (required for migration)
 
-> Nota: per generare PAT con i permessi necessari, vedere la [documentazione Microsoft](https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate)
+> Note: to generate PATs with the necessary permissions, see the [Microsoft documentation](https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate)
 
-A seguire un esempio del tool in azione.
+Below is an example of the tool in action.
 
 [![asciicast](https://asciinema.org/a/741276.svg)](https://asciinema.org/a/741276?t=0:12)
 
+> Attention: from version 1.1.0-RC.4 the binary name has changed from `migrazione-git-azure-devops` to `migrate-git-azure-devops` (for consistency with the GitHub repository name).
+
 ## Quickstart
 
-- Il primo passo è creare due PAT (Personal Access Token) con i permessi necessari e esportarli come variabili d'ambiente:
+- The first step is to create two PATs (Personal Access Tokens) with the required permissions and export them as environment variables:
 
   ```bash
-  export SRC_PAT="<PAT_Sorgente_Code_Read>"
-  export DST_PAT="<PAT_Destinazione_Code_RW_Manage>"
+  export SRC_PAT="<Source_PAT_Code_Read>"
+  export DST_PAT="<Destination_PAT_Code_RW_Manage>"
   ```
 
-- Come ottenere la lista dei repository nella sorgente:
+- How to get the list of repositories in the source:
 
   ```bash
-  migrazione-git-azure-devops --src-org <org-src> --src-project <proj-src> --list-repos
+  migrate-git-azure-devops --src-org <src-org> --src-project <src-proj> --list-repos
 
-  # abbreviazioni:
-  # migrazione-git-azure-devops -so <org-src> -sp <proj-src> --list-repos
+  # abbreviations:
+  # migrate-git-azure-devops -so <src-org> -sp <src-proj> --list-repos
   ```
 
-- Come avviare la migrazione usando il wizard interattivo (consigliato per prima migrazione)
+- How to start migration using the interactive wizard (recommended for first migration):
 
   ```bash
-  migrazione-git-azure-devops -so <org-src> -sp <proj-src> -do <org-dst> -dp <proj-dst> --wizard
+  migrate-git-azure-devops -so <src-org> -sp <src-proj> -do <dst-org> -dp <dst-proj> --wizard
   ```
 
-- Come avviare la migrazione usando la modalità non interattiva (regex)
+- How to start migration using non-interactive mode (regex):
 
   ```bash
-  migrazione-git-azure-devops -so <org-src> -sp <proj-src> \
-    -do <org-dst> -dp <proj-dst> \
+  migrate-git-azure-devops -so <src-org> -sp <src-proj> \
+    -do <dst-org> -dp <dst-proj> \
     -f '^horse-.*$'
   ```
 
-- Come avviare il Dry-run (simulazione, nessuna modifica)
+- How to run Dry-run (simulation, no changes):
 
   ```bash
-  migrazione-git-azure-devops -so <org-src> -sp <proj-src> -do <org-dst> -dp <proj-dst> \
+  migrate-git-azure-devops -so <src-org> -sp <src-proj> -do <dst-org> -dp <dst-proj> \
     -f '^horse-.*$' --dry-run
   ```
 
-- Come forzare il push su repo già esistenti in destinazione
+- How to force push to repositories that already exist in the destination:
 
   ```bash
-  migrazione-git-azure-devops -so <org-src> -sp <proj-src> -do <org-dst> -dp <proj-dst> \
+  migrate-git-azure-devops -so <src-org> -sp <src-proj> -do <dst-org> -dp <dst-proj> \
     -f '^horse-.*$' --force-push
   ```
 
-## Uso della CLI
+## CLI Usage
 
-Flag principali:
+Main flags:
 
-- `--src-org`, `-so`: organizzazione sorgente
-- `--src-project`, `-sp`: progetto sorgente
-- `--dst-org`, `-do`: organizzazione destinazione
-- `--dst-project`, `-dp`: progetto destinazione
-- `--filter`, `-f`: regex dei repository da migrare (es: '^horse-.*$')
-- `--repo-list`, `-rl`: file con lista nomi repo (uno per riga, "#" per commenti)
-- `--dry-run`: non esegue modifiche, mostra solo le azioni
-- `--force-push`, `-fp`: forza push mirror su repo già esistenti
-- `--trace`, `-t`: output di debug; mostra anche body delle risposte HTTP in errore
-- `--list-repos`: elenca i repository della sorgente e termina
-- `--wizard`: modalità interattiva
+- `--src-org`, `-so`: source organization
+- `--src-project`, `-sp`: source project
+- `--dst-org`, `-do`: destination organization
+- `--dst-project`, `-dp`: destination project
+- `--filter`, `-f`: regex for repositories to migrate (e.g.: '^horse-.*$')
+- `--repo-list`, `-rl`: file with list of repo names (one per line, "#" for comments)
+- `--dry-run`: does not make changes, only shows actions
+- `--force-push`, `-fp`: force mirror push to already existing repos
+- `--trace`, `-t`: debug output; also shows HTTP response body on error
+- `--list-repos`: lists source repositories and exits
+- `--wizard`: interactive mode
 - `-h`, `--help`: help
 
-Esempi:
+Examples:
 
-- Lista repo:
+- List repos:
 
   ```bash
-  migrazione-git-azure-devops -so myorg -sp MyProject --list-repos
+  migrate-git-azure-devops -so myorg -sp MyProject --list-repos
   ```
 
-- Migrazione con regex:
+- Migration with regex:
   
   ```bash
-  migrazione-git-azure-devops -so srcorg -sp Src -do dstorg -dp Dst -f '^horse-(core|svc)-.*$'
+  migrate-git-azure-devops -so srcorg -sp Src -do dstorg -dp Dst -f '^horse-(core|svc)-.*$'
   ```
 
-- Migrazione da file lista:
+- Migration from list file:
 
   ```plaintext
-  # File con la lista dei repository da migrare (uno per riga, "#" per commenti)
+  # File with the list of repositories to migrate (one per line, "#" for comments)
   horse-core
   horse-svc
   horse-cli
   ```
 
   ```bash
-  migrazione-git-azure-devops -so srcorg -sp Src -do dstorg -dp Dst --repo-list repo.txt
+  migrate-git-azure-devops -so srcorg -sp Src -do dstorg -dp Dst --repo-list repo.txt
   ```
 
-Output e report:
+Output and report:
 
-- Al termine viene stampata una tabella di riepilogo della migrazione: Repository, Esito, Azure URL.
-- In caso di errori API:
-  - viene mostrato "[ERRORE API] HTTP {{codice}}"
-  - in modalità `--trace` viene mostrato anche il body della risposta
-- I redirect HTTP (3xx) non vengono seguiti: se il PAT è errato potresti vedere 302 invece di una 200 con pagina HTML.
+- At the end, a migration summary table is printed: Repository, Result, Azure URL.
+- In case of API errors:
+  - "[API ERROR] HTTP {{code}}" is shown
+  - in `--trace` mode, the response body is also shown
+- HTTP redirects (3xx) are not followed: if the PAT is incorrect you may see 302 instead of a 200 with an HTML page.
 
-## Installazione
+## Installation
 
-Sono disponibili diverse opzioni per installare il tool.
+Several options are available to install the tool.
 
-> Accertarsi di avere Go 1.22+ installato e anche GOPATH/bin nel PATH oltre a git per la build locale.
+> Make sure you have Go 1.22+ installed and GOPATH/bin in your PATH as well as git for local build.
 
-Opzione A) Da sorgente (Go 1.22+)
-
-```bash
-# Installazione tramite 'go install'
-# Il binario sarà $GOPATH/bin/migrazione-git-azure-devops
-go install github.com/amusarra/migrazione-git-azure-devops/cmd/migrazione-git-azure-devops@latest
-```
-
-Opzione B) Build locale
+Option A) From source (Go 1.22+)
 
 ```bash
-git clone https://github.com/amusarra/migrazione-git-azure-devops.git
-cd migrazione-git-azure-devops
-go build -o bin/migrazione-git-azure-devops ./cmd/migrazione-git-azure-devops
+# Install via 'go install'
+# The binary will be $GOPATH/bin/migrate-git-azure-devops
+go install github.com/amusarra/migrate-git-azure-devops/cmd/migrate-git-azure-devops@latest
 ```
 
-Opzione C) Da release (binari precompilati)
+Option B) Local build
 
-- Vai alla pagina Release: <https://github.com/amusarra/migrazione-git-azure-devops/releases>
-- Scarica il pacchetto per la tua piattaforma (tar.gz o .zip)
-  - Linux AMD64: migrazione-git-azure-devops_x.y.z_linux_amd64.tar.gz
-  - Linux ARM64: migrazione-git-azure-devops_x.y.z_linux_arm64.tar.gz
-  - macOS Apple Silicon: migrazione-git-azure-devops_x.y.z_darwin_arm64.tar.gz
-  - macOS Intel: migrazione-git-azure-devops_x.y.z_darwin_amd64.tar.gz
-  - Windows AMD64: migrazione-git-azure-devops_x.y.z_windows_amd64.zip
-  - Windows ARM64: migrazione-git-azure-devops_x.y.z_windows_arm64.zip
+```bash
+git clone https://github.com/amusarra/migrate-git-azure-devops.git
+cd migrate-git-azure-devops
+go build -o bin/migrate-git-azure-devops ./cmd/migrate-git-azure-devops
+```
 
-> Sui comandi di seguito, sostituisci `x.y.z` con la versione desiderata (es. `1.0.0-RC.4`).
+Option C) From release (precompiled binaries)
 
-Installazione sistema su ambienti Unix-like (richiede sudo e /usr/local/bin esistente):
+- Go to the Release page: <https://github.com/amusarra/migrate-git-azure-devops/releases>
+- Download the package for your platform (tar.gz or .zip)
+  - Linux AMD64: migrate-git-azure-devops_x.y.z_linux_amd64.tar.gz
+  - Linux ARM64: migrate-git-azure-devops_x.y.z_linux_arm64.tar.gz
+  - macOS Apple Silicon: migrate-git-azure-devops_x.y.z_darwin_arm64.tar.gz
+  - macOS Intel: migrate-git-azure-devops_x.y.z_darwin_amd64.tar.gz
+  - Windows AMD64: migrate-git-azure-devops_x.y.z_windows_amd64.zip
+  - Windows ARM64: migrate-git-azure-devops_x.y.z_windows_arm64.zip
+
+> In the commands below, replace `x.y.z` with the desired version (e.g. `1.0.0-RC.4`).
+
+System installation on Unix-like environments (requires sudo and /usr/local/bin to exist):
 
 ```bash
 # Linux AMD64
 TMP="$(mktemp -d)"
-curl -L -o "$TMP/migrazione-git-azure-devops_linux_amd64.tar.gz" \
-  "https://github.com/amusarra/migrazione-git-azure-devops/releases/download/x.y.z/migrazione-git-azure-devops_x.y.z_linux_amd64.tar.gz"
-tar -xzf "$TMP/migrazione-git-azure-devops_linux_amd64.tar.gz" -o -C "$TMP"
-sudo install -m 0755 "$TMP/migrazione-git-azure-devops_linux_amd64" /usr/local/bin/migrazione-git-azure-devops
+curl -L -o "$TMP/migrate-git-azure-devops_linux_amd64.tar.gz" \
+  "https://github.com/amusarra/migrate-git-azure-devops/releases/download/x.y.z/migrate-git-azure-devops_x.y.z_linux_amd64.tar.gz"
+tar -xzf "$TMP/migrate-git-azure-devops_linux_amd64.tar.gz" -o -C "$TMP"
+sudo install -m 0755 "$TMP/migrate-git-azure-devops_linux_amd64" /usr/local/bin/migrate-git-azure-devops
 ```
 
 ```bash
 # macOS Apple Silicon (arm64)
 TMP="$(mktemp -d)"
-curl -L -o "$TMP/migrazione-git-azure-devops_darwin_arm64.tar.gz" \
-  "https://github.com/amusarra/migrazione-git-azure-devops/releases/download/x.y.z/migrazione-git-azure-devops_x.y.z_darwin_arm64.tar.gz"
-tar -xzf "$TMP/migrazione-git-azure-devops_darwin_arm64.tar.gz" -o -C "$TMP"
-sudo install -m 0755 "$TMP/migrazione-git-azure-devops_darwin_arm64" /usr/local/bin/migrazione-git-azure-devops
+curl -L -o "$TMP/migrate-git-azure-devops_darwin_arm64.tar.gz" \
+  "https://github.com/amusarra/migrate-git-azure-devops/releases/download/x.y.z/migrate-git-azure-devops_x.y.z_darwin_arm64.tar.gz"
+tar -xzf "$TMP/migrate-git-azure-devops_darwin_arm64.tar.gz" -o -C "$TMP"
+sudo install -m 0755 "$TMP/migrate-git-azure-devops_darwin_arm64" /usr/local/bin/migrate-git-azure-devops
 ```
 
-Installazione sistema su Windows (PowerShell, copia in $HOME).
+System installation on Windows (PowerShell, copy to $HOME).
 
 ```bash
 # Windows (PowerShell)
 $TMP = New-Item -ItemType Directory -Path (Join-Path $env:TEMP (New-Guid))
-Invoke-WebRequest -Uri "https://github.com/amusarra/migrazione-git-azure-devops/releases/download/x.y.z/migrazione-git-azure-devops_x.y.z_windows_amd64.zip" -OutFile "$TMP/migrazione-git-azure-devops.zip"
-Expand-Archive -Path "$TMP/migrazione-git-azure-devops.zip" -DestinationPath "$TMP"
-Copy-Item -Recurse -Force "$TMP/migrazione-git-azure-devops_windows_amd64.exe" "$HOME/migrazione-git-azure-devops.exe"
+Invoke-WebRequest -Uri "https://github.com/amusarra/migrate-git-azure-devops/releases/download/x.y.z/migrate-git-azure-devops_x.y.z_windows_amd64.zip" -OutFile "$TMP/migrate-git-azure-devops.zip"
+Expand-Archive -Path "$TMP/migrate-git-azure-devops.zip" -DestinationPath "$TMP"
+Copy-Item -Recurse -Force "$TMP/migrate-git-azure-devops_windows_amd64.exe" "$HOME/migrate-git-azure-devops.exe"
 ```
 
-Facoltativo: verifica checksum (scarica checksums.txt dalla release e verifica l’hash).
+Optional: verify checksum (download checksums.txt from the release and verify the hash).
 
-Dopo l’installazione, verifica la versione:
+After installation, verify the version:
 
 ```bash
-# Esecuzione su Unix-like (Linux, macOS)
-migrazione-git-azure-devops --version
+# Run on Unix-like (Linux, macOS)
+migrate-git-azure-devops --version
 
-# Esecuzione su Windows (PowerShell) da $HOME
-.\migrazione-git-azure-devops.exe --version
+# Run on Windows (PowerShell) from $HOME
+.\migrate-git-azure-devops.exe --version
 
-# Esempio di output:
-migrazione-git-azure-devops 1.0.0-RC.4
+# Example output:
+migrate-git-azure-devops 1.0.0-RC.4
 commit: 19dd541501d82a0d6fc274a01538ee67db6ff8ee
 built:  2025-09-17T15:51:04Z
 ```
 
-L'immagine seguente mostra l'output di `--version` e `--help` su di un sistema Microsoft Windows.
+The image below shows the output of `--version` and `--help` on a Microsoft Windows system.
 
 ![screenshot-windows-help-version](docs/resources/images/verifica_dopo_installazione_tool_su_windows.jpg)
 
-### Note per utenti Windows
+### Notes for Windows users
 
-- Se si usa PowerShell, potrebbe essere necessario modificare la [Execution Policy](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies) per eseguire script scaricati (es. `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`).
-- Windows Defender SmartScreen potrebbe bloccare l'esecuzione del tool scaricato. In tal caso, fare clic con il tasto destro sul file `.exe`, selezionare "Proprietà" e quindi "Sblocca" per consentire l'esecuzione (vedi immagine sotto).
+- If using PowerShell, you may need to change the [Execution Policy](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies) to run downloaded scripts (e.g. `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`).
+- Windows Defender SmartScreen may block execution of the downloaded tool. In this case, right-click the `.exe` file, select "Properties" and then "Unblock" to allow execution (see image below).
 
 ![screenshot-windows-sblocco-file](docs/resources/images/program_on_windows_details_1.jpg)
 
-Il blocco di SmartScreen avviene perché il file `.exe` non è firmato con un certificato riconosciuto da Microsoft. Per firmare il binario, è stato usato un certificato self-signed (non riconosciuto da Microsoft). Fare riferimento alla GitHub Action di release per i dettagli. A seguire un esempio di come vedere il certificato self-signed usato per la firma del binario Windows.
+SmartScreen blocks the file because the `.exe` is not signed with a certificate recognized by Microsoft. The binary was signed with a self-signed certificate (not recognized by Microsoft). Refer to the release GitHub Action for details. Below is an example of how to view the self-signed certificate used to sign the Windows binary.
 
 ![screenshot-windows-certificato-self-signed](docs/resources/images/program_on_windows_details_3.jpg)
 
-## Build e Release (per maintainer)
+## Build and Release (for maintainers)
 
-Snapshot con GoReleaser (artefatti in dist/).
+Snapshot with GoReleaser (artifacts in dist/).
 
-> Accertarsi di avere GoReleaser installato (<https://goreleaser.com/install/>).
+> Make sure you have GoReleaser installed (<https://goreleaser.com/install/>).
 
 ```bash
 goreleaser release --clean --snapshot --skip=publish
 ```
 
-Build nativa
+Native build
 
 ```bash
-go build -o bin/migrazione-git-azure-devops ./cmd/migrazione-git-azure-devops
+go build -o bin/migrate-git-azure-devops ./cmd/migrate-git-azure-devops
 ```
 
 CI (GitHub Actions)
 
-- Lint con golangci-lint (vedi `.github/workflows/build.yml`)
-- GoReleaser in modalità snapshot carica gli artefatti come artifact di workflow.
-- La release completa (senza --snapshot) genera changelog e pubblica gli artefatti (vedi `.github/workflows/release.yml`).
+- Lint with golangci-lint (see `.github/workflows/build.yml`)
+- GoReleaser in snapshot mode uploads artifacts as workflow artifacts.
+- The full release (without --snapshot) generates changelog and publishes artifacts (see `.github/workflows/release.yml`).
 
-## Funzionalità Report Migrazione
+## Migration Report Feature
 
-Il tool può generare un report dettagliato della migrazione in formato **JSON** e/o **HTML**. Questa funzionalità è utile per audit, troubleshooting e documentazione delle attività svolte.
+The tool can generate a detailed migration report in **JSON** and/or **HTML** format. This feature is useful for audit, troubleshooting, and documentation of performed activities.
 
-> Questa funzionalità è disponibile dalla versione 1.1.0
+> This feature is available from version 1.1.0
 
-### Come abilitare il report
+### How to enable the report
 
-Aggiungi il flag `--report-format` per scegliere uno o più formati (es. `--report-format json,html`).  
-Specifica la directory di destinazione con `--report-path` (deve esistere), altrimenti il report viene salvato nella directory temporanea di sistema.
+Add the `--report-format` flag to choose one or more formats (e.g. `--report-format json,html`).  
+Specify the destination directory with `--report-path` (must exist), otherwise the report is saved in the system temporary directory.
 
-Esempio:
+Example:
 
 ```bash
-migrazione-git-azure-devops ... --report-format html,json --report-path /percorso/dove/salvare
+migrate-git-azure-devops ... --report-format html,json --report-path /path/to/save
 ```
 
-### Informazioni contenute nel report
+### Information included in the report
 
-Il report include:
+The report includes:
 
-- Data e ora di inizio e fine migrazione
-- Durata totale (in minuti)
-- Hostname della macchina da cui è stata eseguita la migrazione
-- Elenco dettagliato dei repository migrati con:
-  - Nome repository
-  - Esito (OK, errore, skipped, dry-run)
-  - URL sorgente e destinazione
-  - Numero e nomi dei branch migrati
-  - Numero e nomi dei tag migrati
-  - Dimensione del repository in byte
+- Migration start and end date/time
+- Total duration (in minutes)
+- Hostname of the machine where migration was executed
+- Detailed list of migrated repositories with:
+  - Repository name
+  - Result (OK, error, skipped, dry-run)
+  - Source and destination URLs
+  - Number and names of migrated branches
+  - Number and names of migrated tags
+  - Repository size in bytes
 
-A seguire un esempio di output HTML.
+Below is an example of HTML output.
 
 ![screenshot-report-html](docs/resources/images/report_html_example.jpg)
 
-A seguire un esempio di output JSON.
+Below is an example of JSON output.
 
 ```json
 {
@@ -293,33 +295,33 @@ A seguire un esempio di output JSON.
       "NumTags": 2,
       "TagNames": ["v1.0.0", "v1.1.0"],
       "Size": 1234567
-      // ...altri campi...
+      // ...other fields...
     }
     // ...
   ],
-  "ProgramName": "migrazione-git-azure-devops_darwin_arm64",
+  "ProgramName": "migrate-git-azure-devops_darwin_arm64",
   "Version": "1.1.0-RC.2-SNAPSHOT-77c0913",
   "Commit": "77c0913783f61032286916860bda6996f7291474",
   "BuildDate": "2025-09-23T12:12:06Z"
 }
 ```
 
-### Note
+### Notes
 
-- Il nome del file report contiene un timestamp per garantire unicità.
-- Se la directory specificata con `--report-path` non esiste, il tool mostra un errore.
-- È possibile generare entrambi i formati contemporaneamente.
+- The report file name contains a timestamp to ensure uniqueness.
+- If the directory specified with `--report-path` does not exist, the tool shows an error.
+- Both formats can be generated simultaneously.
 
-## Note e consigli
+## Notes and Tips
 
 - PAT:
-  - SRC_PAT richiesto sempre (anche per `--list-repos`)
-  - DST_PAT richiesto quando si specifica la destinazione (migrazione)
+  - SRC_PAT always required (even for `--list-repos`)
+  - DST_PAT required when specifying the destination (migration)
 - Trace:
-  - abilita "[TRACE] ..." con URL richiesti
-  - stampa il body delle risposte HTTP in errore
+  - enables "[TRACE] ..." with requested URLs
+  - prints the HTTP response body on error
 - Dry-run:
-  - nessuna modifica lato Azure DevOps
-  - utile per verificare filtri/lista e azioni che verranno eseguite
+  - no changes on Azure DevOps side
+  - useful to verify filters/list and actions to be performed
 - Force-push:
-  - sovrascrive lo stato della repo di destinazione (mirror + --force se già esiste)
+  - overwrites the state of the destination repo (mirror + --force if it already exists)
