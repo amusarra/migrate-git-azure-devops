@@ -13,10 +13,10 @@ jobs:
   goreleaser:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout codice
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # necessario per changelog
+          fetch-depth: 0 # required for changelog
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -35,7 +35,7 @@ jobs:
     needs: goreleaser
     runs-on: windows-latest
     steps:
-      - name: Scarica asset Windows dalla release
+      - name: Download Windows assets from release
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -47,9 +47,9 @@ jobs:
           gh release download $tag --repo $repo --dir $releaseDir --pattern "*windows*"
           Get-ChildItem $releaseDir -Recurse | Format-List
 
-        # In ambiente reale, usare un certificato valido riconoscibile da Microsoft
-        # per evitare warning all'utente finale.
-      - name: Genera certificato self-signed (Code Sign)
+        # In a real environment, use a valid certificate recognized by Microsoft
+        # to avoid warnings for the end user.
+      - name: Generate self-signed certificate (Code Sign)
         shell: pwsh
         run: |
           $certPath = "$env:RUNNER_TEMP\codesign.pfx"
@@ -57,20 +57,20 @@ jobs:
           $subject = "CN=GitHub Actions SelfSign, O=Antonio Musarra, C=IT"
           $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject $subject -CertStoreLocation "Cert:\CurrentUser\My" -KeyExportPolicy Exportable -KeySpec Signature
           Export-PfxCertificate -Cert $cert -FilePath $certPath -Password (ConvertTo-SecureString -String $certPass -Force -AsPlainText)
-          Write-Host "Certificato generato: $certPath"
+          Write-Host "Certificate generated: $certPath"
 
-      - name: Trova percorso signtool.exe
+      - name: Find signtool.exe path
         id: signtool
         shell: pwsh
         run: |
           $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\" -Recurse -Filter signtool.exe | Where-Object { $_.FullName -like "*x64*" } | Select-Object -First 1
           if (-not $signtool) {
-            Write-Error "signtool.exe non trovato!"
+            Write-Error "signtool.exe not found!"
             exit 1
           }
           echo "signtool_path=$($signtool.FullName)" >> $env:GITHUB_ENV
 
-      - name: Firma .exe (standalone e dentro zip)
+      - name: Sign .exe (standalone and inside zip)
         shell: pwsh
         run: |
           $certPath = "$env:RUNNER_TEMP\codesign.pfx"
@@ -82,13 +82,13 @@ jobs:
             & "$signtool" sign /fd SHA256 /f "$certPath" /p "$certPass" /tr http://timestamp.digicert.com /td SHA256 "$exePath"
           }
 
-          # Firma .exe standalone
+          # Sign standalone .exe
           Get-ChildItem $releaseDir -Filter *.exe -Recurse | ForEach-Object {
-            Write-Host "Firmo $_"
+            Write-Host "Signing $_"
             Sign-Exe $_.FullName
           }
 
-          # Firma .exe dentro zip
+          # Sign .exe inside zip
           Get-ChildItem $releaseDir -Filter *.zip | ForEach-Object {
             $zip = $_.FullName
             $work = Join-Path $env:RUNNER_TEMP ([IO.Path]::GetFileNameWithoutExtension($_.Name))
@@ -96,7 +96,7 @@ jobs:
             Expand-Archive -Path $zip -DestinationPath $work -Force
 
             Get-ChildItem $work -Recurse -Filter *.exe | ForEach-Object {
-              Write-Host "Firmo $_"
+              Write-Host "Signing $_"
               Sign-Exe $_.FullName
             }
 
@@ -104,7 +104,7 @@ jobs:
             Compress-Archive -Path (Get-ChildItem $work) -DestinationPath $zip
           }
 
-      - name: Carica nuovamente gli asset firmati (clobber)
+      - name: Re-upload signed assets (clobber)
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -117,12 +117,12 @@ jobs:
           if ($exeFiles) {
             gh release upload $tag $exeFiles --repo $repo --clobber
           } else {
-            Write-Host "Nessun file .exe trovato per upload"
+            Write-Host "No .exe files found for upload"
           }
 
           $zipFiles = Get-ChildItem -Path $releaseDir -Recurse -Filter *.zip | Select-Object -ExpandProperty FullName
           if ($zipFiles) {
             gh release upload $tag $zipFiles --repo $repo --clobber
           } else {
-            Write-Host "Nessun file .zip trovato per upload"
+            Write-Host "No .zip files found for upload"
           }
