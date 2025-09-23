@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -34,7 +33,7 @@ func getRepos(ctx context.Context, org, project, pat string, trace bool) ([]Repo
 		return nil, fmt.Errorf("errore API (HTTP %d): %s", code, string(body))
 	}
 	var resp listReposResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
+	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&resp); err != nil {
 		return nil, fmt.Errorf("risposta non valida: %w", err)
 	}
 	return resp.Value, nil
@@ -91,7 +90,10 @@ func httpReq(ctx context.Context, method, org, project, path, pat string, body [
 			fmt.Fprintln(os.Stderr, "Errore nella chiusura della risposta HTTP:", err)
 		}
 	}()
-	data, _ := io.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, resp.StatusCode, fmt.Errorf("errore durante la lettura della risposta: %w", err)
+	}
 	return data, resp.StatusCode, nil
 }
 
@@ -104,16 +106,16 @@ func basicAuth(pat string) string {
 // redactToken oscura eventuali credenziali presenti in un URL, utile per log/trace sicuri.
 func redactToken(s string) string {
 	if s == "" {
+		return ""
+	}
+	u, err := url.Parse(s)
+	if err != nil {
+		// Se il parsing fallisce, restituisce la stringa originale per non bloccare il logging
 		return s
 	}
-	if i := strings.Index(s, "://"); i >= 0 {
-		s = s[i+3:]
-		if j := strings.Index(s, "@"); j > 0 {
-			if k := strings.Index(s, ":"); k > 0 && k < j {
-				s = "https://user:***@" + s[j+1:]
-				return s
-			}
-		}
+	if u.User != nil {
+		u.User = url.UserPassword("user", "***")
+		return u.String()
 	}
 	return s
 }
