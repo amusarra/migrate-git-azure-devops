@@ -13,7 +13,7 @@ project_name: migrate-git-azure-devops
 builds:
   - id: migrate-git-azure-devops
     main: ./cmd/migrate-git-azure-devops
-    binary: migrazione-git-azure-devops_{{ .Os }}_{{ .Arch }}
+    binary: migrate-git-azure-devops_{{ .Os }}_{{ .Arch }}
     no_unique_dist_dir: true
     env:
       - CGO_ENABLED=0
@@ -31,7 +31,7 @@ builds:
 
   - id: migrate-git-azure-devops-windows
     main: ./cmd/migrate-git-azure-devops
-    binary: migrazione-git-azure-devops_{{ .Os }}_{{ .Arch }}
+    binary: migrate-git-azure-devops_{{ .Os }}_{{ .Arch }}
     no_unique_dist_dir: true
     env:
       - CGO_ENABLED=0
@@ -56,7 +56,7 @@ builds:
             -ver-build 0
             -product-name "migrate-git-azure-devops"
             -company "Antonio Musarra's Blog"
-            -description "Migrazione repository Git tra progetti Azure DevOps"
+            -description "Migrating Git Repositories Between Azure DevOps Projects"
             -copyright "Copyright (c) 2025 Antonio Musarra\'s Blog"
             -icon ./cmd/migrate-git-azure-devops/metadata/logo_32x32.ico
             -o ./cmd/migrate-git-azure-devops/versioninfo_windows.syso
