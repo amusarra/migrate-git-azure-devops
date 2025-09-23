@@ -33,7 +33,7 @@ func getRepos(ctx context.Context, org, project, pat string, trace bool) ([]Repo
 		return nil, fmt.Errorf("errore API (HTTP %d): %s", code, string(body))
 	}
 	var resp listReposResponse
-	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&resp); err != nil {
+	if err := json.Unmarshal(body, &resp); err != nil {
 		return nil, fmt.Errorf("risposta non valida: %w", err)
 	}
 	return resp.Value, nil
@@ -85,15 +85,19 @@ func httpReq(ctx context.Context, method, org, project, path, pat string, body [
 	if err != nil {
 		return nil, 0, err
 	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			fmt.Fprintln(os.Stderr, "Errore nella chiusura della risposta HTTP:", err)
-		}
-	}()
+	defer resp.Body.Close()
+
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, resp.StatusCode, fmt.Errorf("errore durante la lettura della risposta: %w", err)
 	}
+
+	// Azure DevOps risponde con 302 a una pagina di login invece di 401 se il PAT non è valido.
+	// Intercettiamo questo caso per fornire un errore più chiaro.
+	if resp.StatusCode == http.StatusFound { // 302
+		return data, http.StatusUnauthorized, fmt.Errorf("autenticazione fallita (ricevuto HTTP 302, probabile PAT non valido o scaduto)")
+	}
+
 	return data, resp.StatusCode, nil
 }
 
