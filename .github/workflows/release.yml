@@ -201,7 +201,8 @@ jobs:
             gh release upload "$tag" $files --repo "$repo" --clobber
           else
             echo "No macOS binaries found for upload"
-          }
+          fi
+
       - name: Delete temporary keychain
         if: always()
         run: |
