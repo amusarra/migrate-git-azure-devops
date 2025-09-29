@@ -126,3 +126,84 @@ jobs:
           } else {
             Write-Host "No .zip files found for upload"
           }
+
+  codesign-macos:
+    needs: goreleaser
+    runs-on: macos-latest
+    steps:
+      - name: Download macOS assets from release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ github.ref_name }}"
+          repo="${{ github.repository }}"
+          releaseDir="$RUNNER_TEMP/release"
+          mkdir -p "$releaseDir"
+          gh release download "$tag" --repo "$repo" --dir "$releaseDir" --pattern "*darwin*"
+          ls -l "$releaseDir"
+
+      - name: Generate self-signed certificate (Code Sign)
+        run: |
+          CERT_NAME="GitHub Actions SelfSign"
+          CERT_FILE="$RUNNER_TEMP/codesign-cert.p12"
+          CERT_PASS="githubactions"
+          TMP_KEYCHAIN="$RUNNER_TEMP/codesign.keychain-db"
+          # Crea file di configurazione OpenSSL per codeSigning
+          cat > codesign.cnf <<EOF
+          [ req ]
+          distinguished_name = req_distinguished_name
+          x509_extensions = v3_req
+          prompt = no
+
+          [ req_distinguished_name ]
+          CN = $CERT_NAME
+          O = Antonio Musarra
+          C = IT
+
+          [ v3_req ]
+          keyUsage = critical, digitalSignature
+          extendedKeyUsage = codeSigning
+          EOF
+
+          openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -config codesign.cnf -extensions v3_req
+          openssl pkcs12 -export -out "$CERT_FILE" -inkey key.pem -in cert.pem -password pass:$CERT_PASS -certpbe AES-256-CBC -keypbe AES-256-CBC
+          security create-keychain -p "$CERT_PASS" "$TMP_KEYCHAIN"
+          security import "$CERT_FILE" -f pkcs12 -k "$TMP_KEYCHAIN" -P "$CERT_PASS" -T /usr/bin/codesign
+          security set-keychain-settings "$TMP_KEYCHAIN"
+          security list-keychains -s "$TMP_KEYCHAIN"
+          security unlock-keychain -p "$CERT_PASS" "$TMP_KEYCHAIN"
+          echo "Certificate imported in temporary keychain for codesign"
+
+      - name: List available certificates for codesign
+        run: |
+          TMP_KEYCHAIN="$RUNNER_TEMP/codesign.keychain-db"
+          security find-identity -p codesigning "$TMP_KEYCHAIN"
+
+      - name: Sign macOS binaries (binari .darwin*)
+        run: |
+          CERT_NAME="GitHub Actions SelfSign"
+          TMP_KEYCHAIN="$RUNNER_TEMP/codesign.keychain-db"
+          releaseDir="$RUNNER_TEMP/release"
+          for file in $(find "$releaseDir" -type f -name "*darwin*"); do
+            echo "Signing $file with identity $CERT_NAME"
+            codesign --keychain "$TMP_KEYCHAIN" --force --sign "$CERT_NAME" "$file"
+          done
+
+      - name: Re-upload signed assets (clobber)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ github.ref_name }}"
+          repo="${{ github.repository }}"
+          releaseDir="$RUNNER_TEMP/release"
+          files=$(find "$releaseDir" -type f -name "*darwin*")
+          if [ -n "$files" ]; then
+            gh release upload "$tag" $files --repo "$repo" --clobber
+          else
+            echo "No macOS binaries found for upload"
+          }
+      - name: Delete temporary keychain
+        if: always()
+        run: |
+          TMP_KEYCHAIN="$RUNNER_TEMP/codesign.keychain-db"
+          security delete-keychain "$TMP_KEYCHAIN"
