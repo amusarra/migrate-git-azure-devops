@@ -183,8 +183,10 @@ jobs:
         run: |
           releaseDir="$RUNNER_TEMP/release"
           for archive in $(find "$releaseDir" -type f -name "*.tar.gz"); do
-            echo "Extracting $archive"
-            tar -xzf "$archive" -C "$releaseDir"
+            workdir="${archive%.tar.gz}_work"
+            mkdir -p "$workdir"
+            echo "Extracting $archive to $workdir"
+            tar -xzf "$archive" -C "$workdir"
           done
 
       - name: Sign macOS binaries (binari .darwin*)
@@ -192,10 +194,21 @@ jobs:
           CERT_NAME="GitHub Actions SelfSign"
           TMP_KEYCHAIN="$RUNNER_TEMP/codesign.keychain-db"
           releaseDir="$RUNNER_TEMP/release"
-          # Firma solo i binari, escludi archivi e installer
-          for file in $(find "$releaseDir" -type f -name "*darwin*" ! -name "*.tar.gz" ! -name "*.zip" ! -name "*.dmg" ! -name "*.pkg"); do
-            echo "Signing $file with identity $CERT_NAME"
-            codesign --keychain "$TMP_KEYCHAIN" --force --sign "$CERT_NAME" "$file"
+          for workdir in $(find "$releaseDir" -type d -name "*_work"); do
+            for file in $(find "$workdir" -type f -name "*darwin*" ! -name "*.tar.gz" ! -name "*.zip" ! -name "*.dmg" ! -name "*.pkg"); do
+              echo "Signing $file with identity $CERT_NAME"
+              codesign --keychain "$TMP_KEYCHAIN" --force --sign "$CERT_NAME" "$file"
+            done
+          done
+
+      - name: Repack signed binaries into tar.gz
+        run: |
+          releaseDir="$RUNNER_TEMP/release"
+          for workdir in $(find "$releaseDir" -type d -name "*_work"); do
+            archive="${workdir%_work}.tar.gz"
+            echo "Repacking $workdir into $archive"
+            tar -czf "$archive" -C "$workdir" .
+            rm -rf "$workdir"
           done
 
       - name: Re-upload signed assets (clobber)
@@ -205,12 +218,11 @@ jobs:
           tag="${{ github.ref_name }}"
           repo="${{ github.repository }}"
           releaseDir="$RUNNER_TEMP/release"
-          # Carica solo i binari, escludi archivi e installer
-          files=$(find "$releaseDir" -type f -name "*darwin*" ! -name "*.tar.gz" ! -name "*.zip" ! -name "*.dmg" ! -name "*.pkg")
+          files=$(find "$releaseDir" -type f -name "*.tar.gz")
           if [ -n "$files" ]; then
             gh release upload "$tag" $files --repo "$repo" --clobber
           else
-            echo "No macOS binaries found for upload"
+            echo "No signed macOS archives found for upload"
           fi
 
       - name: Delete temporary keychain
