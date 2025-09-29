@@ -218,6 +218,22 @@ SmartScreen blocks the file because the `.exe` is not signed with a certificate 
 
 ![screenshot-windows-certificato-self-signed](docs/resources/images/program_on_windows_details_3.jpg)
 
+### Notes for macOS users
+
+- If you see a warning that the app cannot be opened because it is from an unidentified developer, you can bypass this opening the Privacy & Security settings and clicking "Open Anyway" (see image below).
+
+![screenshot-macos-unidentified-developer](docs/resources/images/verifica_dopo_installazione_tool_su_macos_1.jpg)
+
+![screenshot-macos-unidentified-developer](docs/resources/images/verifica_dopo_installazione_tool_su_macos_2.jpg)
+
+> From release 1.2.0-RC.1, the macOS binary is self-signed with a self-signed certificate (not recognized by Apple). Refer to the release GitHub Action for details.
+
+### Note for signature binaries
+
+The process of signing the macOS and Windows binaries is done in the release GitHub Action using a self-signed certificate (not recognized by Apple/Microsoft). This is done to provide a basic level of trust and integrity verification for the binaries, even though they are not signed with a certificate from a trusted Certificate Authority (CA).
+
+> The release GitHub Action implementing code signing was created for demonstration purposes only.
+
 ## Build and Release (for maintainers)
 
 Snapshot with GoReleaser (artifacts in dist/).
