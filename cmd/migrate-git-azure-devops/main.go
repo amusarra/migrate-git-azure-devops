@@ -41,6 +41,7 @@ type Config struct {
 	DstProject string
 	Filter     string
 	RepoList   []string
+	RepoMap    map[string]string // Maps source repo names to destination repo names
 	DryRun     bool
 	ForcePush  bool
 	Trace      bool
@@ -382,23 +383,36 @@ func migrateRepos(ctx context.Context, cfg Config, repos []Repo, dstExists map[s
 
 	var results []Summary
 	for i, r := range repos {
-		fmt.Printf("[%d/%d] %s\n", i+1, len(repos), r.Name)
+		// Determine destination repo name (may differ from source)
+		dstRepoName := r.Name
+		if cfg.RepoMap != nil {
+			if mappedName, ok := cfg.RepoMap[r.Name]; ok {
+				dstRepoName = mappedName
+			}
+		}
+
+		if dstRepoName != r.Name {
+			fmt.Printf("[%d/%d] %s -> %s\n", i+1, len(repos), r.Name, dstRepoName)
+		} else {
+			fmt.Printf("[%d/%d] %s\n", i+1, len(repos), r.Name)
+		}
 		sum := Summary{Repo: r.Name, SrcWebURL: r.WebURL}
 
 		repoEnc := url.PathEscape(r.Name)
+		dstRepoEnc := url.PathEscape(dstRepoName)
 		srcProjectEnc := url.PathEscape(cfg.SrcProject)
 		dstProjectEnc := url.PathEscape(cfg.DstProject)
 
 		srcURL := fmt.Sprintf("https://%s:%s@dev.azure.com/%s/%s/_git/%s", url.QueryEscape("user"), cfg.SrcPAT, cfg.SrcOrg, srcProjectEnc, repoEnc)
-		dstURL := fmt.Sprintf("https://%s:%s@dev.azure.com/%s/%s/_git/%s", url.QueryEscape("user"), cfg.DstPAT, cfg.DstOrg, dstProjectEnc, repoEnc)
+		dstURL := fmt.Sprintf("https://%s:%s@dev.azure.com/%s/%s/_git/%s", url.QueryEscape("user"), cfg.DstPAT, cfg.DstOrg, dstProjectEnc, dstRepoEnc)
 
-		dstURLRedacted := fmt.Sprintf("https://user:***@dev.azure.com/%s/%s/_git/%s", cfg.DstOrg, dstProjectEnc, repoEnc)
+		dstURLRedacted := fmt.Sprintf("https://user:***@dev.azure.com/%s/%s/_git/%s", cfg.DstOrg, dstProjectEnc, dstRepoEnc)
 
 		sum.DstClone = dstURLRedacted
-		sum.DstWebURL = fmt.Sprintf("https://dev.azure.com/%s/%s/_git/%s", cfg.DstOrg, dstProjectEnc, repoEnc)
+		sum.DstWebURL = fmt.Sprintf("https://dev.azure.com/%s/%s/_git/%s", cfg.DstOrg, dstProjectEnc, dstRepoEnc)
 
 		// Calculate if it already existed BEFORE migration
-		origExists := dstExists[r.Name]
+		origExists := dstExists[dstRepoName]
 
 		// If it already exists and force is not wanted, skip clone and push immediately
 		if origExists && !forcePush {
@@ -442,24 +456,24 @@ func migrateRepos(ctx context.Context, cfg Config, repos []Repo, dstExists map[s
 		}
 
 		// Create repo in destination if missing
-		if !dstExists[r.Name] && !cfg.DryRun {
-			if err := createRepo(ctx, cfg.DstOrg, cfg.DstProject, cfg.DstPAT, r.Name, cfg.Trace); err != nil {
+		if !dstExists[dstRepoName] && !cfg.DryRun {
+			if err := createRepo(ctx, cfg.DstOrg, cfg.DstProject, cfg.DstPAT, dstRepoName, cfg.Trace); err != nil {
 				sum.Result = "ERROR: destination creation"
 				sum.ErrDetails = err.Error()
-				fmt.Printf("  Error creating repo %s in destination: %v\n", r.Name, err)
+				fmt.Printf("  Error creating repo %s in destination: %v\n", dstRepoName, err)
 				if cfg.Trace {
 					fmt.Fprintf(os.Stderr, "[TRACE] Error details creating repo: %v\n", err)
 				}
 				results = append(results, sum)
 				continue
 			}
-			dstExists[r.Name] = true
-		} else if !dstExists[r.Name] && cfg.DryRun {
-			fmt.Printf("  [DRY] Would create repo in destination: %s\n", r.Name)
+			dstExists[dstRepoName] = true
+		} else if !dstExists[dstRepoName] && cfg.DryRun {
+			fmt.Printf("  [DRY] Would create repo in destination: %s\n", dstRepoName)
 		}
 
 		// Mirror push
-		if dstExists[r.Name] {
+		if dstExists[dstRepoName] {
 			if cfg.DryRun {
 				if origExists && forcePush {
 					fmt.Printf("  [DRY] (cd '%s' && git push --mirror --force '%s')\n", repodir, dstURLRedacted)

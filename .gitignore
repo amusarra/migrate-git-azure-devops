@@ -1,3 +1,4 @@
 # Added by goreleaser init:
 dist/
 .vscode/
+migrate-git-azure-devops

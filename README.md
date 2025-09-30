@@ -113,6 +113,27 @@ Examples:
   migrate-git-azure-devops -so srcorg -sp Src -do dstorg -dp Dst --repo-list repo.txt
   ```
 
+- Migration with different destination repository names:
+
+  You can specify a different destination repository name using CSV format in the repo list file:
+
+  ```plaintext
+  # Format: source-name,destination-name
+  # If no comma is present, destination name = source name
+  Horse-Core-API,horse-core-api
+  horse-svc
+  horse-cli
+  ```
+
+  ```bash
+  migrate-git-azure-devops -so srcorg -sp Src -do dstorg -dp Dst --repo-list repo.txt
+  ```
+
+  In this example:
+  - `Horse-Core-API` (source) will be migrated to `horse-core-api` (destination)
+  - `horse-svc` will keep the same name in the destination
+  - `horse-cli` will keep the same name in the destination
+
 Output and report:
 
 - At the end, a migration summary table is printed: Repository, Result, Azure URL.
