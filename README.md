@@ -134,6 +134,12 @@ Examples:
   - `horse-svc` will keep the same name in the destination
   - `horse-cli` will keep the same name in the destination
 
+  In the output command, the destination repository name is shown.
+
+  ```plaintext
+  [1/3] Horse-Core-API -> horse-core-api
+  ```
+
 Output and report:
 
 - At the end, a migration summary table is printed: Repository, Result, Azure URL.
