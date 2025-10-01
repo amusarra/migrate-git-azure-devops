@@ -80,6 +80,7 @@ func Execute() {
 
 			// Load repo list from file if provided
 			if repoListPath != "" {
+				cfg.RepoMap = make(map[string]string)
 				data, err := os.ReadFile(repoListPath)
 				if err != nil {
 					return fmt.Errorf("error reading --repo-list: %w", err)
@@ -87,7 +88,16 @@ func Execute() {
 				for _, ln := range strings.Split(string(data), "\n") {
 					ln = strings.TrimSpace(ln)
 					if ln != "" && !strings.HasPrefix(ln, "#") {
-						cfg.RepoList = append(cfg.RepoList, ln)
+						// Support CSV format: source,destination
+						// If no comma, destination = source
+						parts := strings.SplitN(ln, ",", 2)
+						srcName := strings.TrimSpace(parts[0])
+						dstName := srcName
+						if len(parts) == 2 {
+							dstName = strings.TrimSpace(parts[1])
+						}
+						cfg.RepoList = append(cfg.RepoList, srcName)
+						cfg.RepoMap[srcName] = dstName
 					}
 				}
 			}
